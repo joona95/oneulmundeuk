@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --bg: var(--figma-color-bg, #ffffff);
+    --bg2: var(--figma-color-bg-secondary, #f5f5f5);
+    --text: var(--figma-color-text, #1e1e1e);
+    --text2: var(--figma-color-text-secondary, #6b6b6b);
+    --border: var(--figma-color-border, #e6e6e6);
+    --brand: var(--figma-color-bg-brand, #0d99ff);
+    --onbrand: var(--figma-color-text-onbrand, #ffffff);
+    --danger: var(--figma-color-text-danger, #d13b3b);
+    --success: var(--figma-color-text-success, #198f51);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 12px/1.4 Inter, system-ui, -apple-system, sans-serif; color: var(--text); background: var(--bg); }
+  header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0; font-size: 13px; font-weight: 600; }
+  header p { margin: 2px 0 0; color: var(--text2); }
+  main { padding: 6px 16px 120px; }
+  .field { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .field:last-child { border-bottom: 0; }
+  .label { display: flex; justify-content: space-between; color: var(--text2); font-weight: 500; margin-bottom: 6px; }
+  select { width: 100%; height: 30px; border: 1px solid var(--border); border-radius: 6px; padding: 0 8px; background: var(--bg); color: var(--text); font: inherit; }
+  .pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pills button { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 999px; padding: 5px 10px; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .pills button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); }
+  .hint { color: var(--text2); margin-top: 4px; }
+  footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px 12px; background: var(--bg); border-top: 1px solid var(--border); display: grid; gap: 6px; }
+  .primary { height: 34px; border: 0; border-radius: 6px; background: var(--brand); color: var(--onbrand); font: inherit; font-weight: 600; cursor: pointer; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .secondary { height: 30px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { min-height: 16px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #status.error { color: var(--danger); white-space: normal; }
+  #status.done { color: var(--success); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Echo UI Builder</h1>
+  <p>디자인 토큰 → 컴포넌트 → 화면을 Figma 레이어로 생성해요.</p>
+</header>
+<main>
+  <div class="field">
+    <div class="label">Screen</div>
+    <select id="screen"></select>
+  </div>
+  <div class="field"><div class="label">Design Variant</div><div class="pills" data-key="variant"></div></div>
+  <div class="field"><div class="label">Accent</div><div class="pills" data-key="accent"></div></div>
+  <div class="field"><div class="label">Background</div><div class="pills" data-key="background"></div></div>
+  <div class="field"><div class="label">Card Style</div><div class="pills" data-key="cardStyle"></div></div>
+  <div class="field"><div class="label">Density</div><div class="pills" data-key="density"></div></div>
+  <div class="field"><div class="label">Emotion Style (v1·v2)</div><div class="pills" data-key="emotionStyle"></div></div>
+  <div class="field">
+    <div class="label">Refinement</div>
+    <div class="pills" data-key="refine"></div>
+    <div class="hint">v2: Sage 절제 · 라벨과 함께 고르는 감정 · 태그/가져오기 제외. v3: 감정은 색 + 말랑한 마커, 스타일 선택 보류, Thread B.</div>
+  </div>
+  <div class="field">
+    <div class="label">Emotion Marker (v3)</div>
+    <div class="pills" data-key="markerVariant"></div>
+  </div>
+  <div class="field">
+    <div class="label">내 감정 조각 · Shape</div>
+    <div class="pills" data-key="markerShape"></div>
+    <div class="hint">Emotion = Color · Shape = 취향 · Label = 의미. 모든 감정이 같은 모양, 색만 다름.</div>
+  </div>
+  <div class="field">
+    <div class="label">Shape Picker Layout (Settings)</div>
+    <div class="pills" data-key="shapePicker"></div>
+  </div>
+  <div class="field">
+    <div class="label">Related Memories</div>
+    <div class="pills" data-key="relatedVariant"></div>
+  </div>
+  <div class="field">
+    <div class="label">Home Variant</div>
+    <div class="pills" data-key="homeVariant"></div>
+    <div class="hint">B가 현재 제품 방향의 기본값이에요.</div>
+  </div>
+</main>
+<footer>
+  <div id="status">준비됨</div>
+  <button class="primary" id="gen-one">Generate Selected Screen</button>
+  <button class="secondary" id="gen-all">Generate All Screens</button>
+  <button class="secondary" id="gen-compare">Generate Comparisons (Emotion · Related · Settings)</button>
+  <div class="row">
+    <button class="secondary" id="gen-home">Compare Home A/B/C</button>
+    <button class="secondary" id="gen-emotion">Emotion Sheet</button>
+  </div>
+  <button class="secondary" id="rebuild">Rebuild Component Library</button>
+</footer>
+<!-- SCRIPT -->
+</body>
+</html>
