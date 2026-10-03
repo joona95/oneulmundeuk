@@ -15,15 +15,16 @@
 
 ## 파일 배치 (Regular, Bold만)
 
-공식 zip의 TTF 중 Regular와 Bold 두 개만 아래 이름으로 넣는다. Thin은 쓰지 않는다.
+공식 zip의 TTF 원래 파일명 그대로 사용한다. Thin은 포함하지 않는다.
 
 ```
-app/src/main/assets/fonts/LINESeedSansKR-Regular.ttf
-app/src/main/assets/fonts/LINESeedSansKR-Bold.ttf
-docs/licenses/LINE_Seed_Sans_KR-OFL.txt   ← zip에 들어 있는 OFL 라이선스 파일 원문
+app/src/main/assets/fonts/LINESeedKR-Rg.ttf   LINE Seed Sans KR Regular (400), Version 1.000, 3.4MB
+app/src/main/assets/fonts/LINESeedKR-Bd.ttf   LINE Seed Sans KR Bold (700), Version 1.000, 3.4MB
+docs/licenses/LINE_Seed_Sans_KR-NOTICE.txt    출처·저작권·라이선스 고지
 ```
 
-zip 안의 원래 파일명이 다르면 위 이름으로 바꿔서 넣는다 (코드는 이 이름만 찾는다).
+폰트 파일 메타데이터 확인 결과: Copyright © LY Corporation, "licensed under the SIL Open Font License, Version 1.1" (http://scripts.sil.org/OFL).
+zip에 OFL 원문 파일이 있으면 `docs/licenses/`에 함께 넣는다.
 
 ## 동작
 

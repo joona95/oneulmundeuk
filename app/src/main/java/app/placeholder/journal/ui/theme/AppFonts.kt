@@ -21,8 +21,8 @@ object AppFonts {
     const val USE_LINE_SEED = true
 
     const val DIR = "fonts"
-    const val REGULAR = "LINESeedSansKR-Regular.ttf"
-    const val BOLD = "LINESeedSansKR-Bold.ttf"
+    const val REGULAR = "LINESeedKR-Rg.ttf" // official file name from LINE_Seed_Sans_KR.zip
+    const val BOLD = "LINESeedKR-Bd.ttf"
 
     @Immutable
     data class Resolved(val family: FontFamily, val isLineSeed: Boolean)
