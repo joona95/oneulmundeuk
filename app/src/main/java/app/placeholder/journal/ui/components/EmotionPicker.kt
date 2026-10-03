@@ -14,13 +14,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,7 +38,7 @@ import app.placeholder.journal.ui.theme.AppTheme
 /**
  * Emotion selection: always marker + label (users never have to guess from a shape).
  * Selected = a very subtle surface halo with a faint neutral edge, the marker one step larger, a semibold
- * label, and one squish → settle. No black ring. Tapping the selected emotion again clears it (optional field).
+ * label, and one clear squash & stretch (only when the user taps — not when a saved record loads). No black ring. Tapping the selected emotion again clears it (optional field).
  */
 @Composable
 fun EmotionPicker(selected: Emotion?, onSelect: (Emotion?) -> Unit, modifier: Modifier = Modifier) {
@@ -42,16 +50,29 @@ fun EmotionPicker(selected: Emotion?, onSelect: (Emotion?) -> Unit, modifier: Mo
     ) {
         Emotion.entries.forEach { e ->
             val isSelected = e == selected
+            val interaction = remember { MutableInteractionSource() }
+            var selectTaps by remember { mutableIntStateOf(0) } // user selections only
+            val reduce = rememberReduceMotion()
+            // 28 → 32 without a layout jump: the marker is always laid out at 32 and scaled down when idle.
+            val base by animateFloatAsState(
+                targetValue = if (isSelected) 1f else t.sizes.markerMd / t.sizes.markerLg,
+                animationSpec = if (reduce) tween<Float>(0) else spring<Float>(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
+                label = "markerSize",
+            )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.selectable(
                     selected = isSelected,
-                    onClick = { onSelect(if (isSelected) null else e) },
+                    onClick = {
+                        if (!isSelected) selectTaps++
+                        onSelect(if (isSelected) null else e)
+                    },
                     role = Role.RadioButton,
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null, // feedback is the squish, not a ripple
+                    interactionSource = interaction,
+                    indication = null, // feedback is the jelly itself, not a ripple
                 ),
             ) {
+                // The halo stays still; only the jelly inside squashes, so the ring never wobbles.
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -61,8 +82,11 @@ fun EmotionPicker(selected: Emotion?, onSelect: (Emotion?) -> Unit, modifier: Mo
                 ) {
                     EmotionMarker(
                         emotion = e,
-                        size = if (isSelected) t.sizes.markerLg else t.sizes.markerMd,
-                        modifier = Modifier.squishOn(trigger = isSelected, active = isSelected),
+                        size = t.sizes.markerLg,
+                        modifier = Modifier
+                            .graphicsLayer { scaleX = base; scaleY = base }
+                            .jellyPress(interaction)
+                            .jellySquash(key = selectTaps, play = true),
                     )
                 }
                 Spacer(Modifier.height(6.dp))

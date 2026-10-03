@@ -2,6 +2,7 @@ package app.placeholder.journal.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -49,16 +50,19 @@ fun CategoryChips(
                     .heightIn(min = t.sizes.chipMinHeight)
                     .semantics { this.selected = selected; role = Role.Checkbox },
             ) {
-                Text(
-                    text = category.name,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) MaterialTheme.colorScheme.background else t.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .widthIn(max = t.sizes.categoryTagMax * 1.5f)
-                        .padding(horizontal = t.spacing.sm, vertical = t.spacing.xxs + t.spacing.hair),
-                )
+                // Surface stretches its child to the 32dp min height; center the label inside it.
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = category.name,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (selected) MaterialTheme.colorScheme.background else t.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .widthIn(max = t.sizes.categoryTagMax * 1.5f)
+                            .padding(horizontal = t.spacing.sm, vertical = t.spacing.xxs + t.spacing.hair),
+                    )
+                }
             }
         }
     }

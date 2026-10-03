@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- TODO(app-name): the product name is not decided. Keep this neutral; never use the internal project name. -->
-    <string name="app_name">기록</string>
+    <!-- Product name. The internal project name is never shown in the UI. Package name is still a placeholder. -->
+    <string name="app_name">오늘문득</string>
 </resources>

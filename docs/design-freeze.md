@@ -1,5 +1,7 @@
 # Design Freeze (2026-10-02)
 
+> 제품명: **오늘문득** (M1.5에서 확정). 내부 프로젝트명 Echo는 UI에 노출하지 않는다.
+
 전체 설계 문서(MVP 개념, IA, 플로우, 토큰, 화면 스펙)는 Claude Docs에 있다:
 https://claude.ai/code/artifact/7a63ffb4-b841-4450-9a5a-8b9cb1ad804d
 
@@ -46,7 +48,9 @@ Figma Builder `DEFAULT_CONFIG`:
 ## Motion
 
 - 평소에는 정적, 만질 때만 말랑.
-- 선택: squish → settle. 탭: 아주 작은 squish. 누름: soft give(0.98). 과거 기록 등장: fade + 4–6px rise, 1회.
+- 선택: squash & stretch, 확실히 보이게 (M1.5에서 강화). 약 420ms: 가로 1.18 / 세로 0.80 → 가로 0.92 / 세로 1.12 → 작은 overshoot → 1.0. 가로·세로가 반대로 움직여 부피를 유지 (단순 scale up/down 아님). 사용자가 탭할 때만 재생.
+- 누르고 있는 동안: jelly는 살짝 납작 (1.06 / 0.92). 카드·버튼은 soft give(0.98). 과거 기록 등장: fade + 4–6px rise, 1회.
+- Splash (cold start 1회, 약 1.3초): jelly 하나가 떨어짐 → 착지 squash (1.30 / 0.70) → rebound stretch (0.90 / 1.15) → spring으로 안정 → `오늘문득` fade + 6px rise → fade out. 시스템 splash는 ivory 배경만.
 - 금지: idle loop, sway, breathing, 큰 bounce, 장식용 motion.
 - Reduce Motion(ANIMATOR_DURATION_SCALE == 0)에서는 상태 변화만.
 

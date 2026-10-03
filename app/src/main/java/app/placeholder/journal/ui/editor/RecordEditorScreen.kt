@@ -1,21 +1,28 @@
 package app.placeholder.journal.ui.editor
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,21 +30,24 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.placeholder.journal.ui.components.AppTopBar
 import app.placeholder.journal.ui.components.CategoryChips
 import app.placeholder.journal.ui.components.EmotionPicker
 import app.placeholder.journal.ui.components.PrimaryButton
@@ -45,7 +55,7 @@ import app.placeholder.journal.ui.container
 import app.placeholder.journal.ui.theme.AppTheme
 import app.placeholder.journal.util.TimeFormat
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecordEditorScreen(
     recordId: String?,
@@ -58,36 +68,31 @@ fun RecordEditorScreen(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
     val openedAt = remember { System.currentTimeMillis() }
+    // Keyboard open → the attribute panel goes compact (no section labels, no big button; "저장" stays in
+    // the top bar) so the writing area keeps room to breathe.
+    val keyboardOpen = WindowInsets.isImeVisible
 
     LaunchedEffect(state.saved) { if (state.saved) onSaved() }
     LaunchedEffect(Unit) { if (!viewModel.isEditing) focus.requestFocus() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0), // the panel owns the bottom insets (nav bar / keyboard)
         topBar = {
-            TopAppBar(
+            AppTopBar(
+                title = if (viewModel.isEditing) "기록 수정" else "새 기록",
                 navigationIcon = {
                     IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "닫기") }
-                },
-                title = {
-                    Text(if (viewModel.isEditing) "기록 수정" else "새 기록", style = MaterialTheme.typography.titleMedium)
                 },
                 actions = {
                     TextButton(onClick = viewModel::save, enabled = state.canSave) {
                         Text("저장", style = MaterialTheme.typography.labelLarge)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
     ) { inner ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(inner)
-                .consumeWindowInsets(inner)
-                .imePadding(),
-        ) {
+        Column(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
             // Writing area — long text stays comfortable (bodyLarge 17/30).
             Column(
                 Modifier
@@ -107,54 +112,81 @@ fun RecordEditorScreen(
                     onValueChange = viewModel::onTextChange,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = t.textPrimary),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = t.sizes.buttonMinHeight * 4).focusRequester(focus),
-                    decorationBox = { inner ->
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = t.sizes.buttonMinHeight * 3)
+                        .padding(bottom = t.spacing.xl)
+                        .focusRequester(focus),
+                    decorationBox = { field ->
                         Box {
                             if (state.text.isEmpty()) {
                                 Text("지금 떠오르는 생각을 남겨보세요…", style = MaterialTheme.typography.bodyLarge, color = t.textTertiary)
                             }
-                            inner()
+                            field()
                         }
                     },
                 )
             }
 
-            // Attribute sheet: emotion (marker + label) and category, then the primary action.
-            val borderColor = t.border
+            // Attribute panel (Figma `attributes`): white surface, top radius 20, hairline top edge only,
+            // and it runs under the navigation bar so there is no ivory strip below it.
             Surface(
                 shape = t.radii.sheetTop,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth().drawBehind {
-                    drawLine(borderColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1f)
-                },
+                modifier = Modifier.fillMaxWidth().topHairline(t.border, t.sizes.hairline, SheetRadius),
             ) {
                 Column(
-                    Modifier.padding(top = t.spacing.md, bottom = t.spacing.md),
-                    verticalArrangement = Arrangement.spacedBy(t.spacing.md),
+                    Modifier
+                        .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime).only(WindowInsetsSides.Bottom))
+                        .padding(top = t.spacing.md, bottom = t.spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(if (keyboardOpen) t.spacing.sm else t.spacing.md),
                 ) {
-                    SheetLabel("지금 기분")
-                    EmotionPicker(
-                        selected = state.emotion,
-                        onSelect = viewModel::onEmotionChange,
-                        modifier = Modifier.padding(horizontal = t.spacing.screenPadding),
-                    )
-                    SheetLabel("카테고리")
-                    CategoryChips(
-                        categories = categories,
-                        selectedId = state.categoryId,
-                        onSelect = viewModel::onCategoryChange,
-                        contentPadding = PaddingValues(horizontal = t.spacing.screenPadding),
-                    )
-                    PrimaryButton(
-                        text = "저장하기",
-                        onClick = viewModel::save,
-                        enabled = state.canSave,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = t.spacing.screenPadding),
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
+                        AnimatedVisibility(visible = !keyboardOpen) { SheetLabel("지금 기분") }
+                        EmotionPicker(
+                            selected = state.emotion,
+                            onSelect = viewModel::onEmotionChange,
+                            modifier = Modifier.padding(horizontal = t.spacing.screenPadding),
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
+                        AnimatedVisibility(visible = !keyboardOpen) { SheetLabel("카테고리") }
+                        CategoryChips(
+                            categories = categories,
+                            selectedId = state.categoryId,
+                            onSelect = viewModel::onCategoryChange,
+                            contentPadding = PaddingValues(horizontal = t.spacing.screenPadding),
+                        )
+                    }
+                    AnimatedVisibility(visible = !keyboardOpen) {
+                        PrimaryButton(
+                            text = "저장하기",
+                            onClick = viewModel::save,
+                            enabled = state.canSave,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = t.spacing.screenPadding),
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+private val SheetRadius = 20 // dp — matches Radii.sheetTop
+
+/** A 1dp line along the rounded top edge only (sides and bottom stay borderless, like Figma's topBorder). */
+private fun Modifier.topHairline(color: Color, width: Dp, radiusDp: Int): Modifier = drawWithContent {
+    drawContent()
+    val w = width.toPx()
+    val r = radiusDp * density
+    val half = w / 2
+    val path = Path().apply {
+        moveTo(half, half + r)
+        arcTo(Rect(half, half, half + 2 * r, half + 2 * r), 180f, 90f, false)
+        lineTo(size.width - r - half, half)
+        arcTo(Rect(size.width - half - 2 * r, half, size.width - half, half + 2 * r), 270f, 90f, false)
+    }
+    drawPath(path, color, style = Stroke(width = w))
 }
 
 @Composable

@@ -4,7 +4,8 @@
 
 ## 반드시 지킬 것
 
-- **앱 이름 미정.** `Echo`는 내부 설계/작업용 가칭일 뿐이다. 사용자 UI, 리소스 문자열, 브랜드 요소에 절대 노출하지 않는다.
+- **제품명은 `오늘문득`.** `Echo`는 내부 설계/작업용 가칭일 뿐이다. 사용자 UI, 리소스 문자열, 브랜드 요소에 절대 노출하지 않는다. 목록 화면 제목 `기록`은 기능명이다(브랜드 아님).
+- 브랜드 핵심 경험: 기록 → 망각 → 재발견 → 연결 → 변화 인식. 표현 후보: `문득, 그때` · `문득, 예전의 생각이 떠올랐어요` · `다시 만난 생각`.
 - **applicationId / package 미정.** 현재 값 `app.placeholder.journal`은 임시값이다. `dev.juna.echo`, `dev.juna.thoughts` 같은 값으로 임의로 확정하지 않는다. 이름이 정해지면 `scripts/rename-package.sh <new.package>`로 바꾼다.
 - **Local-first.** 서버, 로그인, `INTERNET` 권한 없음. `allowBackup=false`.
 - **과한 추상화 금지.** UseCase / Mapper / domain layer를 추가하지 않는다. 구조는 `data`(Room + Repository) / `ui`(Compose + ViewModel) / `related` / `util`.
@@ -25,7 +26,7 @@ app/src/main/java/app/placeholder/journal/
   MainActivity.kt
   data/        model(Emotion, RecordWithCategory) · db(Entity, Dao, AppDatabase, Converters, DefaultCategories) · RecordRepository
   related/     RelatedRecordFinder + NoOpRelatedRecordFinder (추상화만, 구현은 추후)
-  ui/          theme(토큰) · components(EmotionMarker, Motion, EmotionPicker, CategoryChips, RecordCard) · navigation · records · editor · detail
+  ui/          theme(토큰) · components(EmotionMarker, Motion/JellyCurve, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation · records · editor · detail
   util/        TimeFormat
 design/figma-ui-builder/  Figma Plugin API 기반 UI Builder (Figma MCP 사용 안 함)
 docs/        design-freeze.md · TODO.md
@@ -34,17 +35,17 @@ docs/        design-freeze.md · TODO.md
 ## 명령
 
 ```bash
-./gradlew test                 # EmotionConverterTest, TimeFormatTest
+./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest
 ./gradlew connectedAndroidTest # RecordDaoTest (기기/에뮬레이터)
 ./gradlew assembleDebug
 
 cd design/figma-ui-builder && npm install && npm run build && npm run typecheck && npm run validate
 ```
 
-## 현재 상태 (Milestone 1 — Foundation)
+## 현재 상태
 
-구현됨: 기록 목록 → 새 기록 → 감정/카테고리 선택 → Room 저장 → 목록 반영 → 상세 → 수정/삭제.
-**아직 Android Studio에서 빌드/테스트 검증되지 않음** (작성 환경에 Android SDK 없음). 첫 작업은 Gradle sync + `./gradlew test assembleDebug` 확인.
+- M1 Foundation: 기록 목록 → 새 기록 → 감정/카테고리 선택 → Room 저장 → 목록 반영 → 상세 → 수정/삭제. API 35 에뮬레이터에서 검증 완료.
+- M1.5 UI/브랜드 폴리싱: 앱 이름 오늘문득, Design Freeze 정렬(radius·app bar·FAB·empty state·editor panel·edge-to-edge), jelly squash & stretch, splash intro.
 
 범위 밖 (다음 milestone): Home 재발견, Calendar, Explore, Settings(내 감정 조각), Related Memories UI, 알림, 사진 picker, 온디바이스 AI(임베딩), Pretendard 폰트, 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
 

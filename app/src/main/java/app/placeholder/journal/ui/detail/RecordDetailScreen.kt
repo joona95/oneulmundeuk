@@ -1,6 +1,7 @@
 package app.placeholder.journal.ui.detail
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,8 +24,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.placeholder.journal.data.model.RecordWithCategory
+import app.placeholder.journal.ui.components.AppTopBar
 import app.placeholder.journal.ui.components.CategoryTag
 import app.placeholder.journal.ui.components.EmotionMarker
 import app.placeholder.journal.ui.container
@@ -46,7 +45,6 @@ import app.placeholder.journal.ui.theme.AppTheme
 import app.placeholder.journal.ui.theme.colors
 import app.placeholder.journal.util.TimeFormat
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordDetailScreen(
     recordId: String,
@@ -64,19 +62,20 @@ fun RecordDetailScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {},
+            AppTopBar(
+                title = "",
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로") }
                 },
                 actions = {
                     IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = "수정") }
-                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "더보기") }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(text = { Text("삭제") }, onClick = { menuOpen = false; confirmDelete = true })
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "더보기") }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text("삭제") }, onClick = { menuOpen = false; confirmDelete = true })
+                        }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
     ) { inner ->
@@ -111,7 +110,7 @@ private fun DetailContent(item: RecordWithCategory, modifier: Modifier = Modifie
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = t.spacing.screenPadding, vertical = t.spacing.xs),
-        verticalArrangement = Arrangement.spacedBy(t.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(t.spacing.xxl), // hero → body: generous, the text is the hero
     ) {
         Surface(shape = t.radii.hero, color = heroColor, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(t.spacing.lg), verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {

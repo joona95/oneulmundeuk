@@ -30,6 +30,7 @@ data class Sizes(
     val buttonMinHeight: Dp = 48.dp,
     val fab: Dp = 56.dp,
     val iconButton: Dp = 40.dp,
+    val appBar: Dp = 56.dp,
     val categoryTagMax: Dp = 120.dp,
     val hairline: Dp = 1.dp,
 )
