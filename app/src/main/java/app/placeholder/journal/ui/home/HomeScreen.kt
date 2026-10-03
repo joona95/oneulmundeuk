@@ -9,13 +9,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
@@ -32,10 +34,10 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.placeholder.journal.resurface.ResurfacedRecord
-import app.placeholder.journal.ui.components.AppTopBar
 import app.placeholder.journal.ui.components.CategoryTag
 import app.placeholder.journal.ui.components.EmotionMarker
 import app.placeholder.journal.ui.components.RecordCard
@@ -46,8 +48,10 @@ import app.placeholder.journal.ui.theme.colors
 import app.placeholder.journal.util.TimeFormat
 
 /**
- * Home: write today → meet a past thought again → recent records. Quiet on purpose: sections appear only
- * when they have something real to show (a new user sees just the "오늘 기록하기" card).
+ * Home. Visual priority: 오늘문득 (page title) → 다시 만난 생각 (the core content, richest card) →
+ * 오늘 기록하기 (a light, low action) → 최근 기록 (supporting). Sections appear only when they have
+ * something real to show, so a new user sees just the title, the question and the action.
+ * Spacing: tight inside a section, wider between sections.
  */
 @Composable
 fun HomeScreen(
@@ -61,19 +65,22 @@ fun HomeScreen(
 ) {
     val t = AppTheme.tokens
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val sectionGap = t.spacing.xxl // between sections
+    val titleGap = t.spacing.sm // section title → its content
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        AppTopBar(title = "오늘문득")
+        HomeTitle()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = t.spacing.screenPadding, end = t.spacing.screenPadding, top = t.spacing.xs, bottom = t.spacing.xxl),
-            verticalArrangement = Arrangement.spacedBy(t.spacing.listGap),
+            contentPadding = PaddingValues(start = t.spacing.screenPadding, end = t.spacing.screenPadding, top = t.spacing.xxs, bottom = t.spacing.xxl),
         ) {
-            item(key = "write") { WriteTodayCard(onClick = onWrite) }
+            item(key = "write") { WriteToday(onClick = onWrite) }
 
             if (!state.loading) {
                 state.resurfaced?.let { resurfaced ->
-                    item(key = "resurfaced-title") { SectionTitle("다시 만난 생각", Modifier.padding(top = t.spacing.xxl - t.spacing.listGap)) }
+                    item(key = "resurfaced-title") {
+                        SectionTitle("다시 만난 생각", Modifier.padding(top = sectionGap, bottom = titleGap))
+                    }
                     item(key = "resurfaced-${resurfaced.item.record.id}") {
                         ResurfacedCard(resurfaced, onClick = { onOpenRecord(resurfaced.item.record.id) })
                     }
@@ -82,13 +89,19 @@ fun HomeScreen(
                     item(key = "recent-title") {
                         SectionTitle(
                             "최근 기록",
-                            Modifier.padding(top = t.spacing.xxl - t.spacing.listGap),
+                            Modifier.padding(top = sectionGap, bottom = t.spacing.xxs),
                             action = "전체 보기",
                             onAction = onSeeAllRecords,
                         )
                     }
-                    items(state.recent, key = { "recent-" + it.record.id }) { item ->
-                        RecordCard(item, onClick = { onOpenRecord(item.record.id) })
+                    itemsIndexed(state.recent, key = { _, r -> "recent-" + r.record.id }) { index, item ->
+                        RecordCard(
+                            item,
+                            onClick = { onOpenRecord(item.record.id) },
+                            modifier = Modifier.padding(top = if (index == 0) 0.dp else t.spacing.xs),
+                            contentPadding = t.spacing.md,
+                            bodyMaxLines = 2,
+                        )
                     }
                 }
             }
@@ -97,61 +110,80 @@ fun HomeScreen(
     }
 }
 
-/** The main entry point: a quiet card that opens the existing editor. */
+/** Page title: one step calmer than the app-bar title so it never competes with the content. */
 @Composable
-private fun WriteTodayCard(onClick: () -> Unit) {
+private fun HomeTitle() {
+    val t = AppTheme.tokens
+    Box(
+        contentAlignment = Alignment.CenterStart,
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(t.sizes.appBar)
+            .padding(horizontal = t.spacing.screenPadding),
+    ) {
+        Text(
+            text = "오늘문득",
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 28.sp),
+            color = t.textPrimary,
+        )
+    }
+}
+
+/**
+ * The write action: a quiet question and one low, wide row (56dp) that opens the existing editor.
+ * Frequent but light — it must not read as the hero of Home.
+ */
+@Composable
+private fun WriteToday(onClick: () -> Unit) {
     val t = AppTheme.tokens
     val interaction = remember { MutableInteractionSource() }
-    Surface(
-        onClick = onClick,
-        interactionSource = interaction,
-        shape = t.radii.hero,
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(t.sizes.hairline, t.border),
-        modifier = Modifier.fillMaxWidth().softGive(interaction),
-    ) {
-        Column(Modifier.padding(t.spacing.lg), verticalArrangement = Arrangement.spacedBy(t.spacing.lg)) {
-            Text(
-                text = "오늘은 어떤 생각이\n문득 떠올랐나요?",
-                style = MaterialTheme.typography.titleLarge,
-                color = t.textPrimary,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
+        Text(
+            text = "오늘은 어떤 생각이 문득 떠올랐나요?",
+            style = MaterialTheme.typography.bodyMedium,
+            color = t.textSecondary,
+        )
+        Surface(
+            onClick = onClick,
+            interactionSource = interaction,
+            shape = t.radii.lg,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(t.sizes.hairline, t.border),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).softGive(interaction),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = t.spacing.lg, end = t.spacing.md),
+            ) {
                 Text(
-                    text = "지금 떠오르는 생각을 남겨보세요…",
+                    text = "생각 남기기",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = t.textTertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    color = t.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(t.sizes.iconButton).background(MaterialTheme.colorScheme.primary, CircleShape),
-                ) {
-                    Icon(
-                        Icons.Filled.Edit,
-                        contentDescription = "오늘 기록하기",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = null, // the row's text names the action
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
     }
 }
 
 /**
- * "다시 만난 생각" card: the user's own words first. Soft period label, then the original text,
- * then date / emotion / category. A faint (6%) wash of the record's emotion — the one place on Home
- * where color surfaces. No explanations, no "AI", no scores.
+ * "다시 만난 생각" card — the richest element on Home: the user's own words in the larger reading size,
+ * a soft period label, then date / emotion / category. A faint (7%) wash of the record's emotion.
+ * No explanations, no "AI", no scores.
  */
 @Composable
 private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
     val t = AppTheme.tokens
     val record = resurfaced.item.record
     val surface = MaterialTheme.colorScheme.surface
-    val wash = record.emotion?.colors()?.fill?.copy(alpha = 0.06f)?.compositeOver(surface) ?: surface
+    val wash = record.emotion?.colors()?.fill?.copy(alpha = 0.07f)?.compositeOver(surface) ?: surface
     val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
@@ -161,18 +193,18 @@ private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
         border = BorderStroke(t.sizes.hairline, t.border),
         modifier = Modifier.fillMaxWidth().softGive(interaction),
     ) {
-        Column(Modifier.padding(t.spacing.lg), verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
+        Column(Modifier.padding(t.spacing.xl), verticalArrangement = Arrangement.spacedBy(t.spacing.md)) {
             Text(
                 text = resurfaced.period.label,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = t.textSecondary,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Text(
                 text = record.text,
                 style = MaterialTheme.typography.bodyLarge,
                 color = t.textPrimary,
-                maxLines = 4,
+                maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
@@ -189,6 +221,7 @@ private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
     }
 }
 
+/** One style for every Home section title (15 Bold) — smaller than the page title, above body text. */
 @Composable
 private fun SectionTitle(
     title: String,
@@ -198,10 +231,20 @@ private fun SectionTitle(
 ) {
     val t = AppTheme.tokens
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = t.textPrimary, modifier = Modifier.weight(1f))
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 22.sp),
+            color = t.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
         if (action != null) {
-            TextButton(onClick = onAction) {
-                Text(action, style = MaterialTheme.typography.labelLarge, color = t.textSecondary)
+            // secondary action: small and quiet, but still a 48dp touch target
+            TextButton(
+                onClick = onAction,
+                contentPadding = PaddingValues(horizontal = t.spacing.xs),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text(action, style = MaterialTheme.typography.labelSmall, color = t.textTertiary)
             }
         }
     }

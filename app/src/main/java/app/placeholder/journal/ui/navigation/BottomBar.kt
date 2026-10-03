@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -36,8 +37,9 @@ enum class TopTab(val label: String, val icon: ImageVector) {
 }
 
 /**
- * Figma `Bottom Nav`, two tabs for now: white surface with a hairline top edge, 64 tall above the gesture
- * area. Active = charcoal icon on a soft neutral pill + charcoal label; inactive = tertiary.
+ * Figma `Bottom Nav`, two tabs for now: white surface with a hairline top edge, 56 tall above the gesture
+ * area (system navigation inset kept). Active = charcoal icon on a small neutral pill + charcoal label;
+ * inactive = tertiary. Each tab is the full 56dp-tall cell, so the touch target stays ≥ 48dp.
  * Deliberately not the M3 NavigationBar (tonal container, 80 tall).
  */
 @Composable
@@ -49,7 +51,7 @@ fun AppBottomBar(selected: TopTab, onSelect: (TopTab) -> Unit, modifier: Modifie
             Row(
                 modifier = Modifier
                     .navigationBarsPadding()
-                    .height(64.dp)
+                    .height(56.dp)
                     .padding(horizontal = t.spacing.xs)
                     .selectableGroup(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -58,22 +60,23 @@ fun AppBottomBar(selected: TopTab, onSelect: (TopTab) -> Unit, modifier: Modifie
                     val on = tab == selected
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(t.spacing.xxs),
+                        verticalArrangement = Arrangement.spacedBy(t.spacing.hair, Alignment.CenterVertically),
                         modifier = Modifier
                             .weight(1f)
+                            .fillMaxHeight()
                             .selectable(selected = on, role = Role.Tab, onClick = { onSelect(tab) }),
                     ) {
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(width = 56.dp, height = 28.dp)
+                                .size(width = 44.dp, height = 24.dp)
                                 .background(if (on) t.surfaceSecondary else Color.Transparent, t.radii.full),
                         ) {
                             Icon(
                                 tab.icon,
                                 contentDescription = null, // the label below names the tab
                                 tint = if (on) t.textPrimary else t.textTertiary,
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                         Text(

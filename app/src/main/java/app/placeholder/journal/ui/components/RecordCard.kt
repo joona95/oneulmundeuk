@@ -15,13 +15,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import app.placeholder.journal.data.model.RecordWithCategory
 import app.placeholder.journal.ui.theme.AppTheme
 import app.placeholder.journal.util.TimeFormat
 
-/** List card: tiny color marker (no label) + time + category, then the user's text as the hero. */
+/**
+ * List card: tiny color marker (no label) + time + category, then the user's text as the hero.
+ * [contentPadding] / [bodyMaxLines] default to the Records look; Home passes a slightly more compact size.
+ */
 @Composable
-fun RecordCard(item: RecordWithCategory, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun RecordCard(
+    item: RecordWithCategory,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: Dp = AppTheme.tokens.spacing.cardPadding,
+    bodyMaxLines: Int = 3,
+) {
     val t = AppTheme.tokens
     val interaction = remember { MutableInteractionSource() }
     Surface(
@@ -32,7 +42,7 @@ fun RecordCard(item: RecordWithCategory, onClick: () -> Unit, modifier: Modifier
         border = BorderStroke(t.sizes.hairline, t.border),
         modifier = modifier.fillMaxWidth().softGive(interaction),
     ) {
-        Column(Modifier.padding(t.spacing.cardPadding), verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
+        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
                 item.record.emotion?.let { EmotionMarker(it, t.sizes.markerXs) }
                 Text(
@@ -49,7 +59,7 @@ fun RecordCard(item: RecordWithCategory, onClick: () -> Unit, modifier: Modifier
                 text = item.record.text,
                 style = MaterialTheme.typography.bodyMedium,
                 color = t.textPrimary,
-                maxLines = 3,
+                maxLines = bodyMaxLines,
                 overflow = TextOverflow.Ellipsis,
             )
         }
