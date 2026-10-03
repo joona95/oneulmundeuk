@@ -15,11 +15,11 @@
 
 ## 파일 배치 (Regular, Bold만)
 
-공식 zip의 TTF 원래 파일명 그대로 사용한다. Thin은 포함하지 않는다.
+공식 zip의 `LINESeedKR-Rg.ttf` / `LINESeedKR-Bd.ttf`를 내용 변경 없이 `res/font` 규칙(소문자·밑줄)에 맞는 이름으로 넣었다. Thin은 포함하지 않는다.
 
 ```
-app/src/main/assets/fonts/LINESeedKR-Rg.ttf   LINE Seed Sans KR Regular (400), Version 1.000, 3.4MB
-app/src/main/assets/fonts/LINESeedKR-Bd.ttf   LINE Seed Sans KR Bold (700), Version 1.000, 3.4MB
+app/src/main/res/font/line_seed_kr_regular.ttf   LINE Seed Sans KR Regular (400), Version 1.000, 3.4MB
+app/src/main/res/font/line_seed_kr_bold.ttf      LINE Seed Sans KR Bold (700), Version 1.000, 3.4MB
 docs/licenses/LINE_Seed_Sans_KR-NOTICE.txt    출처·저작권·라이선스 고지
 ```
 
@@ -28,10 +28,17 @@ zip에 OFL 원문 파일이 있으면 `docs/licenses/`에 함께 넣는다.
 
 ## 동작
 
-- `ui/theme/AppFonts.kt`가 실행 시 `assets/fonts/`에 두 파일이 있는지 확인한다.
-  - 있으면 LINE Seed Sans KR, 없으면 시스템 sans-serif (빌드·실행은 항상 됨).
-  - `AppFonts.USE_LINE_SEED = false`로 바꾸면 파일을 지우지 않고 시스템 폰트와 비교할 수 있다.
+- `ui/theme/AppFonts.kt`의 `AppFonts.LineSeed`가 `R.font.line_seed_kr_*`를 참조한다. 파일이 없거나 이름이 바뀌면 빌드 에러가 난다 (조용한 fallback 없음).
+- `AppTheme` → `appTypography(family)` → `MaterialTheme(typography = …)`로 Material3 Typography 전체 스타일에 적용된다. 앱 안에 다른 `MaterialTheme`이나 `fontFamily` override는 없다.
+- `AppFonts.USE_LINE_SEED = false`로 바꾸면 파일을 지우지 않고 시스템 폰트와 비교할 수 있다.
 - weight 매핑 (가짜 볼드 합성 없음): 400·500 → Regular, 600·700 → Bold.
+- 임시 비교(TEMP font-check): 기록 목록의 `기록` 제목에만 LINE Seed를 직접 지정해 두었다. `USE_LINE_SEED = false`일 때 이 제목만 LINE Seed, 나머지는 시스템 폰트로 보인다. 폰트 결정 후 제거한다.
+
+## 확인 메모 (2026-10-03)
+
+- 이전 구현(assets 경로)도 Mac 빌드 산출물 기준으로 APK에 두 폰트가 들어 있었고 코드도 올바른 파일명을 참조했다.
+- 폰트 파일: TrueType(glyf), 한글 11,172자 전체 포함, 앱 UI의 한글 107자 누락 없음 → glyph 부족으로 인한 fallback 아님.
+- LINE Seed Sans KR의 한글은 Android 기본 한글 폰트(Noto Sans CJK KR)와 골격이 비슷한 고딕이라, 작은 크기에서 차이가 미묘하다. 차이가 잘 보이는 곳: 숫자(`10월 3일`), 라틴 문자, 글자의 시각적 크기(LINE Seed가 약간 작고 위로 앉음), 받침과 `ㄹ`의 둥근 정도.
 
 ## LINE Seed일 때만 적용되는 최소 조정
 

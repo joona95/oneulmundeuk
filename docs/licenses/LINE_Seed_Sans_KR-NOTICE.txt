@@ -5,5 +5,6 @@ Source: https://seed.line.me/index_kr.html (LINE_Seed_Sans_KR.zip)
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 License text: http://scripts.sil.org/OFL
 
-Bundled files: app/src/main/assets/fonts/LINESeedKR-Rg.ttf, app/src/main/assets/fonts/LINESeedKR-Bd.ttf
+Bundled files (unmodified copies of LINESeedKR-Rg.ttf / LINESeedKR-Bd.ttf):
+  app/src/main/res/font/line_seed_kr_regular.ttf, app/src/main/res/font/line_seed_kr_bold.ttf
 The font files are bundled unmodified and are not sold separately.

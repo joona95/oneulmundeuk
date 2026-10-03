@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.sp
 /**
  * Typography. The scale (sizes, line heights, hierarchy) is the Design Freeze scale.
  *
- * FONT EXPERIMENT (not a final decision): [AppFonts] tries LINE Seed Sans KR from assets and falls back
- * to the system sans-serif when the files are not present. Only when LINE Seed is active, a few
+ * FONT EXPERIMENT (not a final decision): [AppFonts] provides LINE Seed Sans KR from res/font (or the
+ * system sans-serif when AppFonts.USE_LINE_SEED is false). Only when LINE Seed is active, a few
  * minimal adjustments are applied — see [TypeTokens.forLineSeed].
  */
 private fun style(size: Int, line: Int, weight: FontWeight, tracking: Double) = TextStyle(
