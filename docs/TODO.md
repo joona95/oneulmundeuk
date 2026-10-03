@@ -9,14 +9,15 @@
   - Encrypted export / backup format (backup is currently disabled via `allowBackup=false` + data extraction rules).
   - App lock (BiometricPrompt), notification content hidden on lock screen.
   - Threat model notes: device loss, shared device, backups, screenshots (FLAG_SECURE?).
-- [ ] **Font**: experiment in progress — LINE Seed Sans KR vs system font (`docs/font-experiment.md`). Decide, then update Figma + Design Freeze together.
+- [x] **Font**: LINE Seed Sans KR (`docs/font.md`). Reflect in Figma + Design Freeze after the M1.5 device check.
+- [ ] Font size: consider subsetting LINE Seed (≈6.8MB for Regular + Bold) before release.
 
 ## Next feature milestones
 - [ ] Bottom navigation (홈 · 기록 · 탐색 · 설정) once a second tab exists.
 - [ ] Settings › 내 감정 조각 (2-column grid) — persist `MarkerShape` (DataStore) and provide it via `AppTokens.markerShape`.
 - [ ] Records Calendar (color dots only).
 - [ ] Home "다시 만난 생각" (passive rediscovery).
-- [ ] Related Memories "문득, 예전의 생각이 떠올랐어요" (Thread B, no subtitle) — hook in `AppNavHost` after saving a new record.
+- [ ] Related Memories "문득, 예전의 생각이 떠올랐어요" (Thread B, no subtitle) — after the save-success jelly ("통!"), only when RelatedRecordFinder returns results. With no results: normal save flow, never an empty state.
 - [ ] RelatedRecordFinder implementations (keyword baseline → on-device embedding). Embedding table arrives as Room Migration(1, 2).
 - [ ] Explore (semantic search), reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
 - [x] Editor: compact attribute panel while the keyboard is open (M1.5: labels and the big button hide; 저장 stays in the top bar).

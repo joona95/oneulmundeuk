@@ -30,8 +30,9 @@ fun AppNavHost() {
                 recordId = route.recordId,
                 onClose = { nav.popBackStack() },
                 onSaved = {
-                    // Future (Related Memories milestone): for a NEW record, ask RelatedRecordFinder and,
-                    // if it returns results, navigate to the "문득, 예전의 생각이 떠올랐어요" screen instead.
+                    // Runs after the save-success jelly finishes. Future (Related Memories milestone): for a NEW
+                    // record, ask RelatedRecordFinder and, only if it returns results, navigate to
+                    // "문득, 예전의 생각이 떠올랐어요" instead. No results → this normal flow (never an empty state).
                     nav.popBackStack()
                 },
             )

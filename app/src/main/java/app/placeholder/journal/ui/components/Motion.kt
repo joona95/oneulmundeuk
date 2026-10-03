@@ -46,8 +46,11 @@ object JellyMotion {
     /** Pivot slightly below center: the jelly feels pressed onto a surface, but stays inside its halo. */
     val pivot = TransformOrigin(0.5f, 0.62f)
 
-    internal fun spec(axis: (JellyPose) -> Float): AnimationSpec<Float> = keyframes {
-        val poses = JellyCurve.select
+    internal fun spec(
+        curve: List<JellyPose> = JellyCurve.select,
+        axis: (JellyPose) -> Float,
+    ): AnimationSpec<Float> = keyframes {
+        val poses = curve
         durationMillis = poses.last().atMillis
         // `using` sets the easing of the segment that STARTS at that pose:
         // snappy into the squash and the rebound, then a decelerating settle.

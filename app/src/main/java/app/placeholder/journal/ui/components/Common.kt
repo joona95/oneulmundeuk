@@ -28,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,7 +65,6 @@ fun AppTopBar(
     modifier: Modifier = Modifier,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
-    titleStyle: TextStyle? = null,
 ) {
     val t = AppTheme.tokens
     Surface(color = MaterialTheme.colorScheme.background, modifier = modifier.fillMaxWidth()) {
@@ -83,8 +81,7 @@ fun AppTopBar(
             }
             Text(
                 text = title,
-                style = titleStyle
-                    ?: if (navigationIcon == null) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                style = if (navigationIcon == null) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
                 color = t.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

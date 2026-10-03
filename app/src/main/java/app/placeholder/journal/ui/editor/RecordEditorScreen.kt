@@ -1,5 +1,6 @@
 package app.placeholder.journal.ui.editor
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -51,6 +54,8 @@ import app.placeholder.journal.ui.components.AppTopBar
 import app.placeholder.journal.ui.components.CategoryChips
 import app.placeholder.journal.ui.components.EmotionPicker
 import app.placeholder.journal.ui.components.PrimaryButton
+import app.placeholder.journal.ui.components.SaveFeedbackKind
+import app.placeholder.journal.ui.components.SaveSuccessOverlay
 import app.placeholder.journal.ui.container
 import app.placeholder.journal.ui.theme.AppTheme
 import app.placeholder.journal.util.TimeFormat
@@ -72,102 +77,118 @@ fun RecordEditorScreen(
     // the top bar) so the writing area keeps room to breathe.
     val keyboardOpen = WindowInsets.isImeVisible
 
-    LaunchedEffect(state.saved) { if (state.saved) onSaved() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    // Saved → close the keyboard and show the save feedback; onSaved() (navigation) runs when it finishes.
+    LaunchedEffect(state.saved) {
+        if (state.saved) { keyboard?.hide(); focusManager.clearFocus() }
+    }
+    BackHandler(enabled = state.saved) { /* the feedback is ~0.7s; let it finish instead of double-popping */ }
     LaunchedEffect(Unit) { if (!viewModel.isEditing) focus.requestFocus() }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets(0), // the panel owns the bottom insets (nav bar / keyboard)
-        topBar = {
-            AppTopBar(
-                title = if (viewModel.isEditing) "기록 수정" else "새 기록",
-                navigationIcon = {
-                    IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "닫기") }
-                },
-                actions = {
-                    TextButton(onClick = viewModel::save, enabled = state.canSave) {
-                        Text("저장", style = MaterialTheme.typography.labelLarge)
-                    }
-                },
-            )
-        },
-    ) { inner ->
-        Column(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
-            // Writing area — long text stays comfortable (bodyLarge 17/30).
-            Column(
-                Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = t.spacing.screenPadding, vertical = t.spacing.xs),
-                verticalArrangement = Arrangement.spacedBy(t.spacing.md),
-            ) {
-                val stamp = state.createdAt ?: openedAt
-                Text(
-                    text = "${TimeFormat.fullDate(stamp)} · ${TimeFormat.time(stamp)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = t.textTertiary,
-                )
-                BasicTextField(
-                    value = state.text,
-                    onValueChange = viewModel::onTextChange,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = t.textPrimary),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = t.sizes.buttonMinHeight * 3)
-                        .padding(bottom = t.spacing.xl)
-                        .focusRequester(focus),
-                    decorationBox = { field ->
-                        Box {
-                            if (state.text.isEmpty()) {
-                                Text("지금 떠오르는 생각을 남겨보세요…", style = MaterialTheme.typography.bodyLarge, color = t.textTertiary)
-                            }
-                            field()
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0), // the panel owns the bottom insets (nav bar / keyboard)
+            topBar = {
+                AppTopBar(
+                    title = if (viewModel.isEditing) "기록 수정" else "새 기록",
+                    navigationIcon = {
+                        IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "닫기") }
+                    },
+                    actions = {
+                        TextButton(onClick = viewModel::save, enabled = state.canSave) {
+                            Text("저장", style = MaterialTheme.typography.labelLarge)
                         }
                     },
                 )
-            }
-
-            // Attribute panel (Figma `attributes`): white surface, top radius 20, hairline top edge only,
-            // and it runs under the navigation bar so there is no ivory strip below it.
-            Surface(
-                shape = t.radii.sheetTop,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth().topHairline(t.border, t.sizes.hairline, SheetRadius),
-            ) {
+            },
+        ) { inner ->
+            Column(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
+                // Writing area — long text stays comfortable (bodyLarge 17/30).
                 Column(
                     Modifier
-                        .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime).only(WindowInsetsSides.Bottom))
-                        .padding(top = t.spacing.md, bottom = t.spacing.md),
-                    verticalArrangement = Arrangement.spacedBy(if (keyboardOpen) t.spacing.sm else t.spacing.md),
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = t.spacing.screenPadding, vertical = t.spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(t.spacing.md),
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
-                        AnimatedVisibility(visible = !keyboardOpen) { SheetLabel("지금 기분") }
-                        EmotionPicker(
-                            selected = state.emotion,
-                            onSelect = viewModel::onEmotionChange,
-                            modifier = Modifier.padding(horizontal = t.spacing.screenPadding),
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
-                        AnimatedVisibility(visible = !keyboardOpen) { SheetLabel("카테고리") }
-                        CategoryChips(
-                            categories = categories,
-                            selectedId = state.categoryId,
-                            onSelect = viewModel::onCategoryChange,
-                            contentPadding = PaddingValues(horizontal = t.spacing.screenPadding),
-                        )
-                    }
-                    AnimatedVisibility(visible = !keyboardOpen) {
-                        PrimaryButton(
-                            text = "저장하기",
-                            onClick = viewModel::save,
-                            enabled = state.canSave,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = t.spacing.screenPadding),
-                        )
+                    val stamp = state.createdAt ?: openedAt
+                    Text(
+                        text = "${TimeFormat.fullDate(stamp)} · ${TimeFormat.time(stamp)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = t.textTertiary,
+                    )
+                    BasicTextField(
+                        value = state.text,
+                        onValueChange = viewModel::onTextChange,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = t.textPrimary),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = t.sizes.buttonMinHeight * 3)
+                            .padding(bottom = t.spacing.xl)
+                            .focusRequester(focus),
+                        decorationBox = { field ->
+                            Box {
+                                if (state.text.isEmpty()) {
+                                    Text("지금 떠오르는 생각을 남겨보세요…", style = MaterialTheme.typography.bodyLarge, color = t.textTertiary)
+                                }
+                                field()
+                            }
+                        },
+                    )
+                }
+
+                // Attribute panel (Figma `attributes`): white surface, top radius 20, hairline top edge only,
+                // and it runs under the navigation bar so there is no ivory strip below it.
+                Surface(
+                    shape = t.radii.sheetTop,
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth().topHairline(t.border, t.sizes.hairline, SheetRadius),
+                ) {
+                    Column(
+                        Modifier
+                            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime).only(WindowInsetsSides.Bottom))
+                            .padding(top = t.spacing.md, bottom = t.spacing.md),
+                        verticalArrangement = Arrangement.spacedBy(if (keyboardOpen) t.spacing.sm else t.spacing.md),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
+                            AnimatedVisibility(visible = !keyboardOpen) { SheetLabel("지금 기분") }
+                            EmotionPicker(
+                                selected = state.emotion,
+                                onSelect = viewModel::onEmotionChange,
+                                modifier = Modifier.padding(horizontal = t.spacing.screenPadding),
+                            )
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
+                            AnimatedVisibility(visible = !keyboardOpen) { SheetLabel("카테고리") }
+                            CategoryChips(
+                                categories = categories,
+                                selectedId = state.categoryId,
+                                onSelect = viewModel::onCategoryChange,
+                                contentPadding = PaddingValues(horizontal = t.spacing.screenPadding),
+                            )
+                        }
+                        AnimatedVisibility(visible = !keyboardOpen) {
+                            PrimaryButton(
+                                text = "저장하기",
+                                onClick = viewModel::save,
+                                enabled = state.canSave,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = t.spacing.screenPadding),
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        if (state.saved) {
+            SaveSuccessOverlay(
+                emotion = state.emotion,
+                kind = if (state.firstRecord) SaveFeedbackKind.FirstRecord else SaveFeedbackKind.Saved,
+                onFinished = onSaved,
+            )
         }
     }
 }

@@ -11,9 +11,7 @@ import androidx.compose.ui.unit.sp
 /**
  * Typography. The scale (sizes, line heights, hierarchy) is the Design Freeze scale.
  *
- * FONT EXPERIMENT (not a final decision): [AppFonts] provides LINE Seed Sans KR from res/font (or the
- * system sans-serif when AppFonts.USE_LINE_SEED is false). Only when LINE Seed is active, a few
- * minimal adjustments are applied — see [TypeTokens.forLineSeed].
+ * Font: LINE Seed Sans KR ([AppFonts.LineSeed]) with the small adjustments in [TypeTokens.forLineSeed].
  */
 private fun style(size: Int, line: Int, weight: FontWeight, tracking: Double) = TextStyle(
     fontSize = size.sp,
@@ -36,7 +34,7 @@ object TypeTokens {
 
     /**
      * LINE Seed Sans KR ships Regular and Bold only (no Medium / SemiBold), so 600 renders as Bold.
-     * Minimal changes for the experiment:
+     * Adjustments for this family:
      * - label 600 → 500 (= Regular): chips, buttons and day headers were too heavy in Bold at 13sp.
      *   Titles / headings keep their weight (→ Bold) to preserve the hierarchy.
      * - lineHeightStyle Center/Trim.None: LINE Seed's vertical metrics differ from the system font;
@@ -49,10 +47,9 @@ object TypeTokens {
     )
 }
 
-/** Builds the Material typography for a font family. [lineSeed] applies the experiment adjustments. */
-fun appTypography(family: FontFamily, lineSeed: Boolean): Typography {
-    fun f(s: TextStyle, isLabel: Boolean = false): TextStyle =
-        (if (lineSeed) TypeTokens.forLineSeed(s, isLabel) else s).copy(fontFamily = family)
+/** Builds the Material typography for [family] (LINE Seed in the app; any family in unit tests). */
+fun appTypography(family: FontFamily): Typography {
+    fun f(s: TextStyle, isLabel: Boolean = false): TextStyle = TypeTokens.forLineSeed(s, isLabel).copy(fontFamily = family)
     return Typography(
         displaySmall = f(TypeTokens.display),
         titleLarge = f(TypeTokens.title),

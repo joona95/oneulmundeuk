@@ -24,7 +24,6 @@ import app.placeholder.journal.ui.components.AppTopBar
 import app.placeholder.journal.ui.components.EmptyState
 import app.placeholder.journal.ui.components.RecordCard
 import app.placeholder.journal.ui.container
-import app.placeholder.journal.ui.theme.AppFonts
 import app.placeholder.journal.ui.theme.AppTheme
 
 /**
@@ -43,15 +42,7 @@ fun RecordListScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0), // the top bar handles the status bar; content handles the nav bar
-        topBar = {
-            AppTopBar(
-                title = "기록",
-                // TEMP(font-check): LINE Seed set directly on this one title, bypassing the theme. With
-                // AppFonts.USE_LINE_SEED = false the rest of the UI is the system font and this title is not,
-                // so both renderings can be compared on one screen. Remove after the font decision.
-                titleStyle = MaterialTheme.typography.titleLarge.copy(fontFamily = AppFonts.LineSeed),
-            )
-        },
+        topBar = { AppTopBar(title = "기록") },
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
             val list = groups

@@ -1,6 +1,8 @@
 package app.placeholder.journal
 
 import app.placeholder.journal.ui.components.JellyCurve
+import app.placeholder.journal.ui.components.SaveFeedbackCopy
+import app.placeholder.journal.ui.components.SaveFeedbackTiming
 import app.placeholder.journal.ui.splash.BRAND_NAME
 import app.placeholder.journal.ui.splash.SplashMotion
 import org.junit.Assert.assertEquals
@@ -71,6 +73,34 @@ class MotionSpecTest {
         assertTrue(SplashMotion.NAME_DELAY_IN_REBOUND < SplashMotion.REBOUND)
         assertTrue(SplashMotion.NAME_DELAY_IN_REBOUND + SplashMotion.NAME_FADE <= SplashMotion.REBOUND + SplashMotion.SETTLE)
         assertTrue(SplashMotion.HOLD <= 150)
+    }
+
+    @Test
+    fun saveSuccessIsAShortClearPop() {
+        val save = JellyCurve.saveSuccess
+        assertEquals(0, save.first().atMillis)
+        assertTrue(save.last().atMillis in 500..700)
+        assertTrue(save.zipWithNext().all { (a, b) -> b.atMillis > a.atMillis })
+        // pops in from slightly small, uniformly
+        assertTrue(save.first().scaleX < 1f && save.first().scaleX == save.first().scaleY)
+        assertEquals(1f, save.last().scaleX)
+        assertEquals(1f, save.last().scaleY)
+        // the "통!" is at least as strong as the selection squash, and keeps the volume rule
+        val squash = save.maxBy { it.scaleX }
+        assertTrue(squash.scaleX >= curve[1].scaleX && squash.scaleY <= curve[1].scaleY)
+        save.drop(2).dropLast(1).forEach { assertTrue((it.scaleX - 1f) * (it.scaleY - 1f) < 0f) }
+        save.drop(2).forEach { assertTrue("${it.atMillis}ms", it.scaleX * it.scaleY in 0.90f..1.10f) }
+    }
+
+    @Test
+    fun saveFeedbackDoesNotHoldTheNormalFlow() {
+        // normal save: feedback ≈ 0.5–0.7s, then navigation continues
+        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 500..700)
+        assertTrue(SaveFeedbackTiming.REDUCED_SAVED in 400..700)
+        // first record: same motion, a little longer so the message can be read
+        assertTrue(SaveFeedbackTiming.HOLD_FIRST > SaveFeedbackTiming.HOLD_SAVED)
+        assertEquals("저장했어요", SaveFeedbackCopy.SAVED)
+        assertEquals("첫 생각을 남겼어요.", SaveFeedbackCopy.FIRST_TITLE)
     }
 
     @Test

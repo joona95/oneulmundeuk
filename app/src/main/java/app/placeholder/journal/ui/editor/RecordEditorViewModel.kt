@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -22,8 +23,10 @@ data class EditorState(
     val loaded: Boolean = false,
     val saving: Boolean = false,
     val saved: Boolean = false,
+    /** True when the record just created is the only one (shows the first-record save message). */
+    val firstRecord: Boolean = false,
 ) {
-    val canSave: Boolean get() = loaded && !saving && text.isNotBlank()
+    val canSave: Boolean get() = loaded && !saving && !saved && text.isNotBlank() // !saved: no double save during the feedback
 }
 
 /** Create when [recordId] is null, edit otherwise. Emotion and category are optional. */
@@ -60,9 +63,15 @@ class RecordEditorViewModel(
         if (!s.canSave) return
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
-            if (recordId == null) repository.create(s.text, s.emotion, s.categoryId)
-            else repository.update(recordId, s.text, s.emotion, s.categoryId)
-            _state.update { it.copy(saving = false, saved = true) }
+            var first = false
+            if (recordId == null) {
+                repository.create(s.text, s.emotion, s.categoryId)
+                // Read after the write has committed; the save itself is never delayed by the feedback UI.
+                first = repository.observeRecords().first().size == 1
+            } else {
+                repository.update(recordId, s.text, s.emotion, s.categoryId)
+            }
+            _state.update { it.copy(saving = false, saved = true, firstRecord = first) }
         }
     }
 }
