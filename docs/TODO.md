@@ -9,7 +9,7 @@
   - Encrypted export / backup format (backup is currently disabled via `allowBackup=false` + data extraction rules).
   - App lock (BiometricPrompt), notification content hidden on lock screen.
   - Threat model notes: device loss, shared device, backups, screenshots (FLAG_SECURE?).
-- [ ] **Font**: add Pretendard (SIL OFL) to `res/font` and switch `AppFont` in `ui/theme/Type.kt` (system sans-serif fallback for now).
+- [ ] **Font**: experiment in progress — LINE Seed Sans KR vs system font (`docs/font-experiment.md`). Decide, then update Figma + Design Freeze together.
 
 ## Next feature milestones
 - [ ] Bottom navigation (홈 · 기록 · 탐색 · 설정) once a second tab exists.

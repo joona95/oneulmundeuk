@@ -35,7 +35,7 @@ docs/        design-freeze.md · TODO.md
 ## 명령
 
 ```bash
-./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest
+./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest, TypographyTest
 ./gradlew connectedAndroidTest # RecordDaoTest (기기/에뮬레이터)
 ./gradlew assembleDebug
 
@@ -47,7 +47,7 @@ cd design/figma-ui-builder && npm install && npm run build && npm run typecheck 
 - M1 Foundation: 기록 목록 → 새 기록 → 감정/카테고리 선택 → Room 저장 → 목록 반영 → 상세 → 수정/삭제. API 35 에뮬레이터에서 검증 완료.
 - M1.5 UI/브랜드 폴리싱: 앱 이름 오늘문득, Design Freeze 정렬(radius·app bar·FAB·empty state·editor panel·edge-to-edge), jelly squash & stretch, splash intro.
 
-범위 밖 (다음 milestone): Home 재발견, Calendar, Explore, Settings(내 감정 조각), Related Memories UI, 알림, 사진 picker, 온디바이스 AI(임베딩), Pretendard 폰트, 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
+범위 밖 (다음 milestone): Home 재발견, Calendar, Explore, Settings(내 감정 조각), Related Memories UI, 알림, 사진 picker, 온디바이스 AI(임베딩), 폰트 확정(LINE Seed Sans KR 실험 중, `docs/font-experiment.md`), 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
 
 ## 디자인 원칙 요약
 

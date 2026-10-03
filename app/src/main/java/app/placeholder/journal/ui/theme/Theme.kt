@@ -5,6 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import app.placeholder.journal.ui.components.MarkerShape
@@ -50,8 +51,10 @@ private val LightColors = lightColorScheme(
 /** Light only for this milestone (the design is Warm Ivory). Dark theme is a later decision. */
 @Composable
 fun AppTheme(tokens: AppTokens = AppTokens(), content: @Composable () -> Unit) {
+    val fonts = rememberAppFonts()
+    val typography = remember(fonts) { appTypography(fonts.family, lineSeed = fonts.isLineSeed) }
     CompositionLocalProvider(LocalAppTokens provides tokens) {
-        MaterialTheme(colorScheme = LightColors, typography = AppTypography, content = content)
+        MaterialTheme(colorScheme = LightColors, typography = typography, content = content)
     }
 }
 

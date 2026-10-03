@@ -47,10 +47,30 @@ class MotionSpecTest {
 
     @Test
     fun splashIsBriefAndHasClearSquash() {
-        assertTrue(SplashMotion.TOTAL in 1000..1500)
+        // Tempo pass: the whole intro reads as a splash (~0.9–1.1s), not an intro animation.
+        assertTrue(SplashMotion.TOTAL in 900..1100)
         assertTrue(SplashMotion.SQUASH_X > 1.2f && SplashMotion.SQUASH_Y < 0.8f)
         assertTrue(SplashMotion.STRETCH_X < 1f && SplashMotion.STRETCH_Y > 1f)
         assertTrue(SplashMotion.REDUCED_HOLD < SplashMotion.TOTAL)
+    }
+
+    @Test
+    fun splashTempoChangeKeepsTheDeformation() {
+        // Faster, not weaker: the squash / stretch amounts are the M1.5 values.
+        assertEquals(1.30f, SplashMotion.SQUASH_X)
+        assertEquals(0.70f, SplashMotion.SQUASH_Y)
+        assertEquals(0.90f, SplashMotion.STRETCH_X)
+        assertEquals(1.15f, SplashMotion.STRETCH_Y)
+        // Each phase is still long enough to be seen.
+        assertTrue(SplashMotion.DROP >= 200 && SplashMotion.SQUASH >= 70 && SplashMotion.REBOUND >= 110)
+    }
+
+    @Test
+    fun splashNameOverlapsTheSettle() {
+        // The name starts during the rebound and is fully in before the jelly finishes settling.
+        assertTrue(SplashMotion.NAME_DELAY_IN_REBOUND < SplashMotion.REBOUND)
+        assertTrue(SplashMotion.NAME_DELAY_IN_REBOUND + SplashMotion.NAME_FADE <= SplashMotion.REBOUND + SplashMotion.SETTLE)
+        assertTrue(SplashMotion.HOLD <= 150)
     }
 
     @Test

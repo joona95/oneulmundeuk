@@ -49,16 +49,30 @@ const val BRAND_NAME = "오늘문득"
 
 /**
  * Splash timeline (ms). Pure data so the "short, never makes you wait" budget is unit-tested.
- * drop → land (squash) → rebound (stretch) → settle → name → hold → fade out.
+ * drop → land (squash) → rebound (stretch) → settle, with the name fading in DURING the rebound/settle
+ * (not after it) → a very short hold → fade out.
+ *
+ * Tempo pass (font/tempo experiment): ~1.29s → ~0.91s. Deformation amounts are unchanged; only the
+ * durations are shorter and the name overlaps the settle instead of waiting for it.
+ *   before: drop 300 · squash 100 · rebound 170 · settle ~240 · (name 260 after settle) · hold 260 · fade 220
+ *   after:  drop 220 · squash  80 · rebound 130 · settle ~200 · (name 200 from rebound+60) · hold 120 · fade 160
  */
 object SplashMotion {
-    const val DROP = 300
-    const val SQUASH = 100
-    const val REBOUND = 170
-    const val SETTLE = 240 // spring; approximate
-    const val HOLD = 260
-    const val FADE_OUT = 220
+    const val APPEAR = 100
+    const val DROP = 220
+    const val SQUASH = 80
+    const val REBOUND = 130
+    const val SETTLE = 200 // spring (stiffness 600, damping 0.55); approximate visual duration
+    const val HOLD = 120
+    const val FADE_OUT = 160
     const val TOTAL = DROP + SQUASH + REBOUND + SETTLE + HOLD + FADE_OUT
+
+    /** The name starts this long after the rebound begins, so it lands as the jelly settles. */
+    const val NAME_DELAY_IN_REBOUND = 60
+    const val NAME_FADE = 200
+
+    const val SETTLE_STIFFNESS = 600f
+    const val SETTLE_DAMPING = 0.55f
 
     const val DROP_HEIGHT_DP = 64f
     const val SQUASH_X = 1.30f
@@ -73,7 +87,7 @@ object SplashMotion {
 
 /**
  * Cold-start brand intro, drawn over the app (the list composes and loads underneath meanwhile).
- * One jelly drops in, lands with a clear squash, rebounds once, settles; then the name appears.
+ * One jelly drops in, lands with a clear squash, rebounds once and settles while the name fades in.
  * Calm on purpose: one jelly, no particles, no gradients, no loops.
  */
 @Composable
@@ -99,7 +113,7 @@ fun SplashIntro(onFinished: () -> Unit) {
         }
         coroutineScope {
             // 1. appear + drop (accelerating, slightly elongated while falling)
-            launch { jellyAlpha.animateTo(1f, tween(140)) }
+            launch { jellyAlpha.animateTo(1f, tween(SplashMotion.APPEAR)) }
             launch { sx.animateTo(0.96f, tween(SplashMotion.DROP)) }
             launch { sy.animateTo(1.06f, tween(SplashMotion.DROP)) }
             y.animateTo(0f, tween(SplashMotion.DROP, easing = FastOutLinearInEasing))
@@ -109,6 +123,12 @@ fun SplashIntro(onFinished: () -> Unit) {
             launch { sx.animateTo(SplashMotion.SQUASH_X, tween(SplashMotion.SQUASH, easing = LinearOutSlowInEasing)) }
             sy.animateTo(SplashMotion.SQUASH_Y, tween(SplashMotion.SQUASH, easing = LinearOutSlowInEasing))
         }
+        // The name overlaps the rebound + settle (launched in the outer scope so it never delays the jelly).
+        launch {
+            delay(SplashMotion.NAME_DELAY_IN_REBOUND.toLong())
+            launch { nameAlpha.animateTo(1f, tween(SplashMotion.NAME_FADE)) }
+            nameRise.animateTo(0f, tween(SplashMotion.NAME_FADE, easing = LinearOutSlowInEasing))
+        }
         coroutineScope {
             // 3. rebound: narrow and tall, a small hop
             launch { sx.animateTo(SplashMotion.STRETCH_X, tween(SplashMotion.REBOUND, easing = FastOutSlowInEasing)) }
@@ -116,13 +136,11 @@ fun SplashIntro(onFinished: () -> Unit) {
             sy.animateTo(SplashMotion.STRETCH_Y, tween(SplashMotion.REBOUND, easing = FastOutSlowInEasing))
         }
         coroutineScope {
-            // 4. settle (soft spring) while the name fades up
-            val settle = spring<Float>(dampingRatio = 0.55f, stiffness = 420f)
+            // 4. settle (soft but quicker spring)
+            val settle = spring<Float>(dampingRatio = SplashMotion.SETTLE_DAMPING, stiffness = SplashMotion.SETTLE_STIFFNESS)
             launch { sx.animateTo(1f, settle) }
             launch { sy.animateTo(1f, settle) }
-            launch { y.animateTo(0f, settle) }
-            launch { nameAlpha.animateTo(1f, tween(260)) }
-            launch { nameRise.animateTo(0f, tween(260, easing = LinearOutSlowInEasing)) }
+            y.animateTo(0f, settle)
         }
         delay(SplashMotion.HOLD.toLong())
         overlayAlpha.animateTo(0f, tween(SplashMotion.FADE_OUT))
@@ -134,7 +152,7 @@ fun SplashIntro(onFinished: () -> Unit) {
             .fillMaxSize()
             .alpha(overlayAlpha.value)
             .background(MaterialTheme.colorScheme.background)
-            // swallow taps during the ~1.3s intro
+            // swallow taps during the ~0.9s intro
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .semantics { contentDescription = BRAND_NAME },
     ) {
