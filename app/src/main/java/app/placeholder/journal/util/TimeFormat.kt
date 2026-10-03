@@ -3,6 +3,7 @@ package app.placeholder.journal.util
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
@@ -23,10 +24,15 @@ object TimeFormat {
     }
 
     /** "2026년 9월 24일 목요일" */
-    fun fullDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String {
-        val d = at(epochMillis, zone).toLocalDate()
-        return "${d.year}년 ${d.monthValue}월 ${d.dayOfMonth}일 ${weekday(d.dayOfWeek)}"
-    }
+    fun fullDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
+        fullDate(dayKey(epochMillis, zone))
+
+    /** "2026년 9월 24일 목요일" — for a calendar date (no time zone involved). */
+    fun fullDate(date: LocalDate): String =
+        "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일 ${weekday(date.dayOfWeek)}"
+
+    /** Calendar header: "2026년 10월" */
+    fun monthTitle(month: YearMonth): String = "${month.year}년 ${month.monthValue}월"
 
     private fun daysAgo(epochMillis: Long, now: Long, zone: ZoneId): Long {
         val day = at(epochMillis, zone).toLocalDate()
@@ -61,6 +67,9 @@ object TimeFormat {
         return "$head · ${time(epochMillis, zone)}"
     }
 
-    /** Stable grouping key for the list (local calendar day). */
+    /**
+     * The ONE timestamp → calendar-day rule (device time zone). The list groups, the calendar dots and the
+     * selected-day records all use it, so a record near midnight lands on the same day everywhere.
+     */
     fun dayKey(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): LocalDate = at(epochMillis, zone).toLocalDate()
 }

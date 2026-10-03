@@ -26,7 +26,7 @@ app/src/main/java/app/placeholder/journal/
   MainActivity.kt
   data/        model(Emotion, RecordWithCategory) · db(Entity, Dao, AppDatabase, Converters, DefaultCategories) · RecordRepository
   related/     RelatedRecordFinder + NoOpRelatedRecordFinder (추상화만, 구현은 추후)
-  ui/          theme(토큰, AppFonts) · components(EmotionMarker, Motion/JellyCurve, SaveSuccess, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation · records · editor · detail
+  ui/          theme(토큰, AppFonts) · components(EmotionMarker, Motion/JellyCurve, SaveSuccess, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation · records(목록·캘린더, RecordsCalendar 순수 로직) · editor · detail
   util/        TimeFormat
 design/figma-ui-builder/  Figma Plugin API 기반 UI Builder (Figma MCP 사용 안 함)
 docs/        design-freeze.md · TODO.md · font.md (LINE Seed Sans KR) · licenses/
@@ -35,7 +35,7 @@ docs/        design-freeze.md · TODO.md · font.md (LINE Seed Sans KR) · licen
 ## 명령
 
 ```bash
-./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest, TypographyTest
+./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest, TypographyTest, RecordsCalendarTest
 ./gradlew connectedAndroidTest # RecordDaoTest (기기/에뮬레이터)
 ./gradlew assembleDebug
 
@@ -46,8 +46,9 @@ cd design/figma-ui-builder && npm install && npm run build && npm run typecheck 
 
 - M1 Foundation: 기록 목록 → 새 기록 → 감정/카테고리 선택 → Room 저장 → 목록 반영 → 상세 → 수정/삭제. API 35 에뮬레이터에서 검증 완료.
 - M1.5 UI/브랜드 폴리싱: 앱 이름 오늘문득, Design Freeze 정렬(radius·app bar·FAB·empty state·editor panel·edge-to-edge), jelly squash & stretch, splash intro(~0.9s), 폰트 LINE Seed Sans KR 확정, 저장 성공 jelly("통!") 피드백. 실기기 확인 후 Figma/Design Freeze 반영 예정.
+- M2 기록 영역: 목록/캘린더 전환, 월간 캘린더(emotion dot 최대 3개), 날짜 선택 → 그날 기록 → 상세, 카테고리 필터(목록·캘린더 공통). 상태는 `RecordListViewModel`(메모리), 날짜 계산은 `TimeFormat.dayKey` 하나로 통일. DAO/schema 변경 없음.
 
-범위 밖 (다음 milestone): Home 재발견, Calendar, Explore, Settings(내 감정 조각), Related Memories UI, 알림, 사진 picker, 온디바이스 AI(임베딩), 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
+범위 밖 (다음 milestone): Home 재발견, Explore, Settings(내 감정 조각), Related Memories UI, 알림, 사진 picker, 온디바이스 AI(임베딩), 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
 
 ## 디자인 원칙 요약
 

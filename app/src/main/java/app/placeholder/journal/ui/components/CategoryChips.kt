@@ -23,7 +23,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import app.placeholder.journal.data.db.CategoryEntity
 import app.placeholder.journal.ui.theme.AppTheme
 
-/** Horizontal-scrolling category chips. Selected = charcoal (Sage is reserved for primary actions). */
+/**
+ * Horizontal-scrolling category chips. Selected = charcoal (Sage is reserved for primary actions).
+ * Tapping the selected chip clears it (null). With [allLabel] (filters), a leading "전체" chip represents
+ * null and is selected when nothing else is.
+ */
 @Composable
 fun CategoryChips(
     categories: List<CategoryEntity>,
@@ -31,6 +35,7 @@ fun CategoryChips(
     onSelect: (String?) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    allLabel: String? = null,
 ) {
     val t = AppTheme.tokens
     LazyRow(
@@ -39,31 +44,40 @@ fun CategoryChips(
         horizontalArrangement = Arrangement.spacedBy(t.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (allLabel != null) {
+            item(key = "all") { Chip(allLabel, selected = selectedId == null, onClick = { onSelect(null) }) }
+        }
         items(categories, key = { it.id }) { category ->
             val selected = category.id == selectedId
-            Surface(
-                onClick = { onSelect(if (selected) null else category.id) },
-                shape = t.radii.full,
-                color = if (selected) t.textPrimary else MaterialTheme.colorScheme.surface,
-                border = BorderStroke(t.sizes.hairline, if (selected) t.textPrimary else t.border),
+            Chip(category.name, selected, onClick = { onSelect(if (selected) null else category.id) })
+        }
+    }
+}
+
+@Composable
+private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val t = AppTheme.tokens
+    Surface(
+        onClick = onClick,
+        shape = t.radii.full,
+        color = if (selected) t.textPrimary else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(t.sizes.hairline, if (selected) t.textPrimary else t.border),
+        modifier = Modifier
+            .heightIn(min = t.sizes.chipMinHeight)
+            .semantics { this.selected = selected; role = Role.Checkbox },
+    ) {
+        // Surface stretches its child to the 32dp min height; center the label inside it.
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) MaterialTheme.colorScheme.background else t.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .heightIn(min = t.sizes.chipMinHeight)
-                    .semantics { this.selected = selected; role = Role.Checkbox },
-            ) {
-                // Surface stretches its child to the 32dp min height; center the label inside it.
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = category.name,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (selected) MaterialTheme.colorScheme.background else t.textSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .widthIn(max = t.sizes.categoryTagMax * 1.5f)
-                            .padding(horizontal = t.spacing.sm, vertical = t.spacing.xxs + t.spacing.hair),
-                    )
-                }
-            }
+                    .widthIn(max = t.sizes.categoryTagMax * 1.5f)
+                    .padding(horizontal = t.spacing.sm, vertical = t.spacing.xxs + t.spacing.hair),
+            )
         }
     }
 }

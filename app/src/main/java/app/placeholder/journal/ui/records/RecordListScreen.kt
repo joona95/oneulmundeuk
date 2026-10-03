@@ -2,12 +2,15 @@ package app.placeholder.journal.ui.records
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -21,14 +24,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.placeholder.journal.ui.components.AppFab
 import app.placeholder.journal.ui.components.AppTopBar
+import app.placeholder.journal.ui.components.CategoryChips
 import app.placeholder.journal.ui.components.EmptyState
 import app.placeholder.journal.ui.components.RecordCard
 import app.placeholder.journal.ui.container
 import app.placeholder.journal.ui.theme.AppTheme
 
 /**
- * Records — List. "기록" here is the screen's function name, not the app brand.
- * Edge-to-edge: the list scrolls behind the transparent navigation bar; the FAB sits above it.
+ * Records: 목록 / 캘린더 with one shared category filter. "기록" is the screen's function name, not the
+ * app brand. Edge-to-edge: content scrolls behind the transparent navigation bar; the FAB sits above it.
  */
 @Composable
 fun RecordListScreen(
@@ -37,7 +41,7 @@ fun RecordListScreen(
     viewModel: RecordListViewModel = viewModel { RecordListViewModel(container().repository) },
 ) {
     val t = AppTheme.tokens
-    val groups by viewModel.groups.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -45,44 +49,50 @@ fun RecordListScreen(
         topBar = { AppTopBar(title = "기록") },
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
-            val list = groups
             when {
-                list == null -> Unit // loading: keep the calm empty background
-                list.isEmpty() -> EmptyState(
+                state.loading -> Unit // keep the calm empty background
+                // First run, list view: the existing friendly empty state (nothing to switch or filter yet).
+                !state.hasAnyRecord && state.mode == RecordsViewMode.List -> EmptyState(
                     title = "아직 남긴 생각이 없어요",
                     body = "떠오르는 생각을 한 줄만 남겨도 괜찮아요.",
-                    // optical center: a little above the middle, clear of the FAB
                     modifier = Modifier.align(BiasAlignment(0f, -0.25f)).padding(horizontal = t.spacing.screenPadding),
                 )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        start = t.spacing.screenPadding,
-                        end = t.spacing.screenPadding,
                         top = t.spacing.xs,
                         bottom = t.sizes.fab + t.spacing.xxl + t.spacing.md, // FAB never covers the last card
                     ),
                     verticalArrangement = Arrangement.spacedBy(t.spacing.listGap),
                 ) {
-                    list.forEachIndexed { index, group ->
-                        item(key = "h-${group.day}") {
-                            Text(
-                                text = group.header,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = t.textSecondary,
-                                // groups are 20 apart (Figma): 12 list gap + 8
-                                modifier = Modifier.padding(top = if (index == 0) 0.dp else t.spacing.xs),
+                    item(key = "controls") {
+                        Column(verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
+                            ViewModeToggle(
+                                mode = state.mode,
+                                onChange = viewModel::setMode,
+                                modifier = Modifier.padding(horizontal = t.spacing.screenPadding),
                             )
+                            if (state.categories.isNotEmpty()) {
+                                CategoryChips(
+                                    categories = state.categories,
+                                    selectedId = state.selectedCategoryId,
+                                    onSelect = viewModel::selectCategory,
+                                    contentPadding = PaddingValues(horizontal = t.spacing.screenPadding),
+                                    allLabel = "전체",
+                                )
+                            }
                         }
-                        items(group.items, key = { it.record.id }) { item ->
-                            RecordCard(item, onClick = { onOpenRecord(item.record.id) })
-                        }
+                    }
+                    when (state.mode) {
+                        RecordsViewMode.List -> listContent(state, onOpenRecord)
+                        RecordsViewMode.Calendar -> calendarContent(state, viewModel, onOpenRecord)
                     }
                     item(key = "nav-bar-space") { Box(Modifier.navigationBarsPadding()) }
                 }
             }
 
             // Figma: 20dp from the right edge, 16dp above the bottom chrome (here: the navigation bar).
+            // Calendar view too: always "write a new record now" (no back-dating in this milestone).
             AppFab(
                 onClick = onNewRecord,
                 contentDescription = "새 기록",
@@ -93,4 +103,75 @@ fun RecordListScreen(
             )
         }
     }
+}
+
+private fun LazyListScope.listContent(state: RecordsUiState, onOpenRecord: (String) -> Unit) {
+    if (state.groups.isEmpty()) {
+        item(key = "filtered-empty") { FilteredEmpty() }
+        return
+    }
+    state.groups.forEachIndexed { index, group ->
+        item(key = "h-${group.day}") {
+            val t = AppTheme.tokens
+            Text(
+                text = group.header,
+                style = MaterialTheme.typography.labelLarge,
+                color = t.textSecondary,
+                // groups are 20 apart (Figma): 12 list gap + 8; the first sits 8 below the filters
+                modifier = Modifier.padding(horizontal = t.spacing.screenPadding).padding(top = t.spacing.xs),
+            )
+        }
+        items(group.items, key = { it.record.id }) { item ->
+            val t = AppTheme.tokens
+            RecordCard(item, onClick = { onOpenRecord(item.record.id) }, modifier = Modifier.padding(horizontal = t.spacing.screenPadding))
+        }
+    }
+}
+
+private fun LazyListScope.calendarContent(
+    state: RecordsUiState,
+    viewModel: RecordListViewModel,
+    onOpenRecord: (String) -> Unit,
+) {
+    val cal = state.calendar
+    item(key = "calendar") {
+        val t = AppTheme.tokens
+        Column(Modifier.fillMaxWidth().padding(horizontal = t.spacing.md)) {
+            MonthHeader(cal.month, onPrevious = viewModel::previousMonth, onNext = viewModel::nextMonth)
+            MonthGrid(
+                cells = cal.cells,
+                today = cal.today,
+                selectedDate = cal.selectedDate,
+                dots = cal.dots,
+                onSelect = viewModel::selectDate,
+            )
+        }
+    }
+    item(key = "day-header-${cal.selectedDate}") {
+        val t = AppTheme.tokens
+        SelectedDayHeader(cal.selectedDate, Modifier.padding(horizontal = t.spacing.screenPadding).padding(top = t.spacing.sm))
+    }
+    if (cal.selectedDayRecords.isEmpty()) {
+        item(key = "day-empty") {
+            val t = AppTheme.tokens
+            SelectedDayEmpty(Modifier.padding(horizontal = t.spacing.screenPadding))
+        }
+    } else {
+        items(cal.selectedDayRecords, key = { "day-" + it.record.id }) { item ->
+            val t = AppTheme.tokens
+            RecordCard(item, onClick = { onOpenRecord(item.record.id) }, modifier = Modifier.padding(horizontal = t.spacing.screenPadding))
+        }
+    }
+}
+
+/** A filter with no matches: one quiet line, not a full empty screen. */
+@Composable
+private fun FilteredEmpty() {
+    val t = AppTheme.tokens
+    Text(
+        text = "이 카테고리에는 아직 남긴 생각이 없어요.",
+        style = MaterialTheme.typography.bodySmall,
+        color = t.textTertiary,
+        modifier = Modifier.padding(horizontal = t.spacing.screenPadding, vertical = t.spacing.md + 4.dp),
+    )
 }
