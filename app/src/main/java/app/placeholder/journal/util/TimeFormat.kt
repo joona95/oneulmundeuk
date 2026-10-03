@@ -31,6 +31,13 @@ object TimeFormat {
     fun fullDate(date: LocalDate): String =
         "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일 ${weekday(date.dayOfWeek)}"
 
+    /** Compact date: "2026. 7. 5" */
+    fun dotDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
+        dayKey(epochMillis, zone).let { "${it.year}. ${it.monthValue}. ${it.dayOfMonth}" }
+
+    /** Home date line: "10월 4일 일요일" */
+    fun monthDayWeekday(date: LocalDate): String = "${date.monthValue}월 ${date.dayOfMonth}일 ${weekday(date.dayOfWeek)}"
+
     /** Calendar header: "2026년 10월" */
     fun monthTitle(month: YearMonth): String = "${month.year}년 ${month.monthValue}월"
 

@@ -4,6 +4,10 @@ import kotlinx.serialization.Serializable
 
 // Type-safe Navigation Compose routes.
 
+/** Start destination (M3). Home and Records are the two bottom-navigation tabs. */
+@Serializable
+object HomeRoute
+
 @Serializable
 object RecordListRoute
 

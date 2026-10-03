@@ -1,50 +1,106 @@
 package app.placeholder.journal.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.placeholder.journal.ui.detail.RecordDetailScreen
 import app.placeholder.journal.ui.editor.RecordEditorScreen
+import app.placeholder.journal.ui.home.HomeScreen
 import app.placeholder.journal.ui.records.RecordListScreen
 
 /**
- * Single stack for this milestone (the bottom tabs arrive with Home / Explore / Settings).
- * List → Editor(new) → save → back to List
- * List → Detail → Editor(edit) → save → back to Detail → delete → back to List
+ * Two top-level tabs (홈 · 기록) with a bottom bar; Editor and Detail are full screens above them.
+ * Home → Editor(new) → save → back to Home
+ * Home / Records → Detail → Editor(edit) → save → back to Detail → delete → back to the tab
  */
 @Composable
 fun AppNavHost() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = RecordListRoute) {
-        composable<RecordListRoute> {
-            RecordListScreen(
-                onNewRecord = { nav.navigate(RecordEditorRoute()) },
-                onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
-            )
+    val entry by nav.currentBackStackEntryAsState()
+    val destination = entry?.destination
+    val currentTab = when {
+        destination?.hierarchy?.any { it.hasRoute(HomeRoute::class) } == true -> TopTab.Home
+        destination?.hierarchy?.any { it.hasRoute(RecordListRoute::class) } == true -> TopTab.Records
+        else -> null // Editor / Detail: no bottom bar
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0), // screens handle the status bar themselves
+        bottomBar = { currentTab?.let { tab -> AppBottomBar(selected = tab, onSelect = { nav.openTab(it) }) } },
+    ) { inner ->
+        NavHost(
+            navController = nav,
+            startDestination = HomeRoute,
+            // With the bar visible, its height (incl. the gesture area) is consumed, so screens' own
+            // navigationBarsPadding() becomes 0. Without it (Editor / Detail) nothing changes.
+            modifier = Modifier.padding(inner).consumeWindowInsets(inner),
+        ) {
+            composable<HomeRoute> {
+                HomeScreen(
+                    onWrite = { nav.navigate(RecordEditorRoute()) },
+                    onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
+                    onSeeAllRecords = { nav.openTab(TopTab.Records) },
+                )
+            }
+            composable<RecordListRoute> {
+                RecordListScreen(
+                    onNewRecord = { nav.navigate(RecordEditorRoute()) },
+                    onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
+                )
+            }
+            composable<RecordEditorRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<RecordEditorRoute>()
+                RecordEditorScreen(
+                    recordId = route.recordId,
+                    onClose = { nav.popBackStack() },
+                    onSaved = {
+                        // Runs after the save-success jelly finishes; returns to where the user came from
+                        // (Home, Records or Detail). Future (Related Memories milestone): for a NEW record, ask
+                        // RelatedRecordFinder and, only if it returns results, navigate to
+                        // "문득, 예전의 생각이 떠올랐어요" instead. No results → this normal flow (never an empty state).
+                        nav.popBackStack()
+                    },
+                )
+            }
+            composable<RecordDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<RecordDetailRoute>()
+                RecordDetailScreen(
+                    recordId = route.recordId,
+                    onBack = { nav.popBackStack() },
+                    onEdit = { nav.navigate(RecordEditorRoute(route.recordId)) },
+                    // Back to the tab the record was opened from (Home or Records).
+                    onDeleted = { nav.popBackStack<RecordDetailRoute>(inclusive = true) },
+                )
+            }
         }
-        composable<RecordEditorRoute> { entry ->
-            val route = entry.toRoute<RecordEditorRoute>()
-            RecordEditorScreen(
-                recordId = route.recordId,
-                onClose = { nav.popBackStack() },
-                onSaved = {
-                    // Runs after the save-success jelly finishes. Future (Related Memories milestone): for a NEW
-                    // record, ask RelatedRecordFinder and, only if it returns results, navigate to
-                    // "문득, 예전의 생각이 떠올랐어요" instead. No results → this normal flow (never an empty state).
-                    nav.popBackStack()
-                },
-            )
-        }
-        composable<RecordDetailRoute> { entry ->
-            val route = entry.toRoute<RecordDetailRoute>()
-            RecordDetailScreen(
-                recordId = route.recordId,
-                onBack = { nav.popBackStack() },
-                onEdit = { nav.navigate(RecordEditorRoute(route.recordId)) },
-                onDeleted = { nav.popBackStack(RecordListRoute, inclusive = false) },
-            )
-        }
+    }
+}
+
+/** Standard bottom-nav switch: one Home at the root, tab state saved and restored. */
+private fun NavHostController.openTab(tab: TopTab) {
+    val options: NavOptionsBuilder.() -> Unit = {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+    when (tab) {
+        TopTab.Home -> navigate(HomeRoute, options)
+        TopTab.Records -> navigate(RecordListRoute, options)
     }
 }

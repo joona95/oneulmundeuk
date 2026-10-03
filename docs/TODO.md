@@ -13,12 +13,13 @@
 - [ ] Font size: consider subsetting LINE Seed (≈6.8MB for Regular + Bold) before release.
 
 ## Next feature milestones
-- [ ] Bottom navigation (홈 · 기록 · 탐색 · 설정) once a second tab exists.
+- [x] Bottom navigation: 홈 · 기록 (M3). 탐색 · 설정 tabs arrive with those screens.
 - [ ] Settings › 내 감정 조각 (2-column grid) — persist `MarkerShape` (DataStore) and provide it via `AppTokens.markerShape`.
 - [x] Records Calendar (M2): 목록/캘린더 전환, 월 이동, 최대 3개 emotion dot, 날짜별 기록, 카테고리 필터(목록·캘린더 공통).
 - [ ] Records: remember the last view mode / filter (DataStore) — not in M2.
 - [ ] Records: "+N" or a denser hint when a day has more than 3 records.
-- [ ] Home "다시 만난 생각" (passive rediscovery).
+- [x] Home "다시 만난 생각" (M3, date-based: 1년/3개월/1개월 전 ±7일, ≥14일, section hidden when none).
+- [ ] Home resurfacing: semantic selector behind `ResurfacedRecordSelector` (later milestone).
 - [ ] Related Memories "문득, 예전의 생각이 떠올랐어요" (Thread B, no subtitle) — after the save-success jelly ("통!"), only when RelatedRecordFinder returns results. With no results: normal save flow, never an empty state.
 - [ ] RelatedRecordFinder implementations (keyword baseline → on-device embedding). Embedding table arrives as Room Migration(1, 2).
 - [ ] Explore (semantic search), reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
