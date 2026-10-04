@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
@@ -59,19 +60,25 @@ import app.placeholder.journal.ui.components.SaveSuccessOverlay
 import app.placeholder.journal.ui.container
 import app.placeholder.journal.ui.theme.AppTheme
 import app.placeholder.journal.util.TimeFormat
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecordEditorScreen(
     recordId: String?,
     onClose: () -> Unit,
-    onSaved: () -> Unit,
-    viewModel: RecordEditorViewModel = viewModel { RecordEditorViewModel(container().repository, recordId) },
+    /** null → the normal flow (back to where the editor was opened); non-null → Related Memories. */
+    onSaved: (RelatedAfterSave?) -> Unit,
+    viewModel: RecordEditorViewModel = viewModel {
+        val c = container()
+        RecordEditorViewModel(c.repository, recordId, c.relatedFinder)
+    },
 ) {
     val t = AppTheme.tokens
     val state by viewModel.state.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
     val openedAt = remember { System.currentTimeMillis() }
     // Keyboard open → the attribute panel goes compact (no section labels, no big button; "저장" stays in
     // the top bar) so the writing area keeps room to breathe.
@@ -187,7 +194,9 @@ fun RecordEditorScreen(
             SaveSuccessOverlay(
                 emotion = state.emotion,
                 kind = if (state.firstRecord) SaveFeedbackKind.FirstRecord else SaveFeedbackKind.Saved,
-                onFinished = onSaved,
+                // Related past records found → "저장했어요" holds a little longer, then Related Memories.
+                toRelated = { viewModel.awaitRelated() != null },
+                onFinished = { scope.launch { onSaved(viewModel.awaitRelated()) } },
             )
         }
     }

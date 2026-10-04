@@ -39,4 +39,22 @@ class TimeFormatTest {
         assertEquals("9월 30일 수요일", TimeFormat.dayHeader(at(2026, 9, 30, 7, 58), now, seoul))
         assertEquals("2025년 10월 3일 금요일", TimeFormat.dayHeader(at(2025, 10, 3, 23, 10), now, seoul))
     }
+
+    @Test
+    fun longDate() {
+        assertEquals("2026년 4월 11일", TimeFormat.longDate(at(2026, 4, 11, 23, 40), seoul))
+    }
+
+    @Test
+    fun ago() {
+        // now = 2026-10-02
+        assertEquals("오늘", TimeFormat.ago(at(2026, 10, 2, 0, 5), now, seoul))
+        assertEquals("어제", TimeFormat.ago(at(2026, 10, 1, 23, 59), now, seoul))
+        assertEquals("3일 전", TimeFormat.ago(at(2026, 9, 29, 9, 0), now, seoul))
+        assertEquals("2주 전", TimeFormat.ago(at(2026, 9, 18, 9, 0), now, seoul))
+        assertEquals("한 달 전", TimeFormat.ago(at(2026, 9, 2, 9, 0), now, seoul))
+        assertEquals("6개월 전", TimeFormat.ago(at(2026, 4, 2, 9, 0), now, seoul))
+        assertEquals("1년 전", TimeFormat.ago(at(2025, 10, 3, 9, 0), now, seoul)) // 364 days → not "11개월 전"
+        assertEquals("1년 2개월 전", TimeFormat.ago(at(2025, 8, 2, 9, 0), now, seoul))
+    }
 }

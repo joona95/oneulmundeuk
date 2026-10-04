@@ -17,3 +17,16 @@ data class RecordEditorRoute(val recordId: String? = null)
 
 @Serializable
 data class RecordDetailRoute(val recordId: String)
+
+/**
+ * Related Memories (M4), right after saving a new record. [relatedIds] keeps the finder's order (most related
+ * first, ≤ 5), joined with ',' so the route only carries plain strings (record ids are UUIDs).
+ */
+@Serializable
+data class RelatedMemoriesRoute(val recordId: String, val relatedIds: String) {
+    val relatedIdList: List<String> get() = relatedIds.split(',').filter { it.isNotEmpty() }
+
+    companion object {
+        fun of(recordId: String, relatedIds: List<String>) = RelatedMemoriesRoute(recordId, relatedIds.joinToString(","))
+    }
+}

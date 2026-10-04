@@ -14,7 +14,7 @@
 
 ## Status
 - [x] M1 Foundation · M1.5 brand/UI polish · M2 Records/Calendar · M3 Home (visual direction final).
-- [ ] **M4 "문득, 그때"** — next. Related past records right after saving (see Related Memories below). No semantic retrieval / embedding / LLM yet.
+- [x] **M4 "문득, 그때"** — done, UX checked on device (debug finder: `src/debug/.../related/RelatedFinderFactory.kt`). No semantic retrieval / embedding / LLM (→ M5).
 - [ ] Figma + Design Freeze sync after M4: Home + Save Success + Related Memories in one pass (until then the code is the reference for Home / Save Success).
 
 ## Next feature milestones
@@ -25,12 +25,13 @@
 - [ ] Records: "+N" or a denser hint when a day has more than 3 records.
 - [x] Home (M3): date · hero question · writing surface → Editor · "다시 만난 생각" (date-based: 1년/3개월/1개월 전 ±7일, ≥14일, section hidden when none) · 최근 기록 compact ×3 + 전체 보기. No brand header.
 - [ ] Home resurfacing: semantic selector behind `ResurfacedRecordSelector` (later milestone).
-- [ ] **M4** Related Memories "문득, 예전의 생각이 떠올랐어요" (Thread B, no subtitle) — after the save-success jelly ("통!"), only when RelatedRecordFinder returns results. With no results: normal save flow, never an empty state. No embedding / LLM in M4.
+- [x] **M4** Related Memories "문득, 예전의 생각이 떠올랐어요" (Thread B v3, no subtitle) — current record + up to 5 past records in finder order, after the save jelly + a ~500ms "저장했어요" hold, only when RelatedRecordFinder returns results (new, non-first records). No results: normal save flow, never an empty state. X only (홈으로 / 이어서 생각 남기기 removed until their meaning + relation persistence are decided).
+- [ ] **M5** RelatedRecordFinder: synthetic dataset → embedding cosine / threshold / heuristic / optional local LLM rerank; return only results past the threshold (≤ 5).
 - [ ] RelatedRecordFinder implementations (keyword baseline → on-device embedding). Embedding table arrives as Room Migration(1, 2).
 - [ ] Explore (semantic search), reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
 - [x] Editor: compact attribute panel while the keyboard is open (M1.5: labels and the big button hide; 저장 stays in the top bar).
 - [ ] Editor: consider a one-line toolbar (emotion/category as a single row) if the compact panel still feels tight on small screens.
 - [ ] Records List: search icon (Figma) arrives with Explore.
-- [ ] Record Detail: "이어지는 기록" section + "지금의 생각 덧붙이기" action (Figma) arrive with Related Memories.
+- [ ] Record Detail: "이어지는 기록" section + "지금의 생각 덧붙이기" action (Figma) — decide in M5 (needs the real finder and a relation / persistence decision).
 - [ ] Motion polish candidates: list item fade + 4–6px rise for newly surfaced past records (Related / Home only).
 - [ ] Dark theme decision.

@@ -1,6 +1,6 @@
 # 오늘문득 — local-first Android app
 
-Status: M1 · M1.5 · M2 (Records/Calendar) · M3 (Home) done. Next: M4 "문득, 그때" (Related Memories after saving). See `CLAUDE.md` / `docs/TODO.md`.
+Status: M1 · M1.5 · M2 (Records/Calendar) · M3 (Home) done. M4 "문득, 그때" (Related Memories after saving) done. Next: M5 (finding related records). See `CLAUDE.md` / `docs/TODO.md`.
 
 Kotlin · Jetpack Compose · Material 3 · Room · Coroutines/Flow · Navigation Compose (type-safe).
 There is no server and no login. Every record stays on the device. The app has no `INTERNET` permission, and records are excluded from cloud backup and device transfer.
@@ -32,7 +32,7 @@ app/src/main/java/app/placeholder/journal/
 │  ├─ db/      AppDatabase (v1) · RecordEntity · CategoryEntity · RecordDao · CategoryDao · EmotionConverter · DefaultCategories
 │  ├─ model/   Emotion (stable keys) · RecordWithCategory
 │  └─ RecordRepository.kt
-├─ related/    RelatedRecordFinder + NoOpRelatedRecordFinder (no AI yet; wired in M4)
+├─ related/    RelatedRecordFinder + NoOpRelatedRecordFinder (wired in M4; real finder in M5)
 ├─ resurface/  ResurfacedRecordSelector + DateBased… (Home "다시 만난 생각", date rule, no AI)
 ├─ ui/
 │  ├─ theme/   Design Freeze tokens: Color · EmotionPalette · Type · Dimens · Shape · Theme (AppTheme.tokens)
@@ -67,4 +67,4 @@ The Room schema JSON is exported to `app/schemas/` on build, so commit it to ver
 
 ## Not implemented yet
 
-Related Memories after saving (M4, next), Explore, Settings (incl. 내 감정 조각 picker), notifications, photo picker, embedding/LLM, DB encryption. See `docs/TODO.md`.
+Real related-record finding (M5), Explore, Settings (incl. 내 감정 조각 picker), notifications, photo picker, embedding/LLM, DB encryption. See `docs/TODO.md`.

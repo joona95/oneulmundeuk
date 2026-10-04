@@ -35,6 +35,29 @@ object TimeFormat {
     fun dotDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         dayKey(epochMillis, zone).let { "${it.year}. ${it.monthValue}. ${it.dayOfMonth}" }
 
+    /** Related Memories date: "2026년 4월 11일" (no weekday). */
+    fun longDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
+        dayKey(epochMillis, zone).let { "${it.year}년 ${it.monthValue}월 ${it.dayOfMonth}일" }
+
+    /**
+     * Related Memories time cue (Design Freeze Thread B, same rule as the Figma builder's fmtAgo):
+     * "오늘", "어제", "3일 전", "2주 전", "한 달 전", "6개월 전", "1년 전", "1년 2개월 전".
+     * Months are rounded (≈30.44 days) so 364 days reads "1년 전", not "11개월 전".
+     */
+    fun ago(epochMillis: Long, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+        val days = daysAgo(epochMillis, now, zone)
+        if (days <= 0) return "오늘"
+        if (days == 1L) return "어제"
+        if (days < 7) return "${days}일 전"
+        if (days < 28) return "${Math.round(days / 7.0)}주 전"
+        val months = Math.round(days / 30.44).toInt()
+        if (months <= 1) return "한 달 전"
+        if (months < 12) return "${months}개월 전"
+        val years = months / 12
+        val rest = months % 12
+        return if (rest == 0) "${years}년 전" else "${years}년 ${rest}개월 전"
+    }
+
     /** Home date line: "10월 4일 일요일" */
     fun monthDayWeekday(date: LocalDate): String = "${date.monthValue}월 ${date.dayOfMonth}일 ${weekday(date.dayOfWeek)}"
 

@@ -22,11 +22,14 @@ import app.placeholder.journal.ui.detail.RecordDetailScreen
 import app.placeholder.journal.ui.editor.RecordEditorScreen
 import app.placeholder.journal.ui.home.HomeScreen
 import app.placeholder.journal.ui.records.RecordListScreen
+import app.placeholder.journal.ui.related.RelatedMemoriesScreen
 
 /**
  * Two top-level tabs (홈 · 기록) with a bottom bar; Editor and Detail are full screens above them.
  * Home → Editor(new) → save → back to Home
  * Home / Records → Detail → Editor(edit) → save → back to Detail → delete → back to the tab
+ * M4: Home / Records → Editor(new) → save, related found → Related Memories (the editor is replaced) →
+ *     past record → Detail → back → Related Memories → X / back → the tab it started from
  */
 @Composable
 fun AppNavHost() {
@@ -36,7 +39,7 @@ fun AppNavHost() {
     val currentTab = when {
         destination?.hierarchy?.any { it.hasRoute(HomeRoute::class) } == true -> TopTab.Home
         destination?.hierarchy?.any { it.hasRoute(RecordListRoute::class) } == true -> TopTab.Records
-        else -> null // Editor / Detail: no bottom bar
+        else -> null // Editor / Detail / Related Memories: no bottom bar
     }
 
     Scaffold(
@@ -69,13 +72,28 @@ fun AppNavHost() {
                 RecordEditorScreen(
                     recordId = route.recordId,
                     onClose = { nav.popBackStack() },
-                    onSaved = {
-                        // Runs after the save-success jelly finishes; returns to where the user came from
-                        // (Home, Records or Detail). Future (Related Memories milestone): for a NEW record, ask
-                        // RelatedRecordFinder and, only if it returns results, navigate to
-                        // "문득, 예전의 생각이 떠올랐어요" instead. No results → this normal flow (never an empty state).
-                        nav.popBackStack()
+                    onSaved = { related ->
+                        // Runs after the save-success jelly. No related records (or an edit / the first record)
+                        // → back to where the user came from (Home, Records or Detail); never an empty state.
+                        // Related records → Related Memories in place of the editor, so its X / back returns to
+                        // the tab the record was written from without an extra entry on the stack.
+                        if (related == null) {
+                            nav.popBackStack()
+                        } else {
+                            nav.navigate(RelatedMemoriesRoute.of(related.recordId, related.relatedIds)) {
+                                popUpTo<RecordEditorRoute> { inclusive = true }
+                            }
+                        }
                     },
+                )
+            }
+            composable<RelatedMemoriesRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<RelatedMemoriesRoute>()
+                RelatedMemoriesScreen(
+                    recordId = route.recordId,
+                    relatedIds = route.relatedIdList,
+                    onClose = { nav.popBackStack() },
+                    onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
                 )
             }
             composable<RecordDetailRoute> { backStackEntry ->
@@ -84,7 +102,7 @@ fun AppNavHost() {
                     recordId = route.recordId,
                     onBack = { nav.popBackStack() },
                     onEdit = { nav.navigate(RecordEditorRoute(route.recordId)) },
-                    // Back to the tab the record was opened from (Home or Records).
+                    // Back to where the record was opened from (Home, Records or Related Memories).
                     onDeleted = { nav.popBackStack<RecordDetailRoute>(inclusive = true) },
                 )
             }

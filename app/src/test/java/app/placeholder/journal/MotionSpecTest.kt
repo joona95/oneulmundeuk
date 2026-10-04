@@ -108,4 +108,20 @@ class MotionSpecTest {
         assertEquals("오늘문득", BRAND_NAME)
         assertTrue(!BRAND_NAME.contains("Echo", ignoreCase = true))
     }
+
+    @Test
+    fun relatedMemoriesEnterIsOneQuietFade() {
+        val m = app.placeholder.journal.ui.related.RelatedMemoriesMotion
+        assertTrue(m.ENTER in 800..900)
+        assertTrue(m.ENTER_REDUCED < m.ENTER)
+        assertTrue(m.RISE_DP in 8..16)
+    }
+
+    @Test
+    fun saveWithRelatedHoldsBeforeMoving() {
+        val related = SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_RELATED
+        assertTrue(related in 1050..1150) // jelly 600 + "저장했어요" ~500, then Related Memories
+        assertTrue(SaveFeedbackTiming.HOLD_RELATED > SaveFeedbackTiming.HOLD_SAVED)
+        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 900..1000) // plain save unchanged
+    }
 }

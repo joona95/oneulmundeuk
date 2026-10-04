@@ -24,31 +24,25 @@ import app.placeholder.journal.util.TimeFormat
 /**
  * List card: tiny color marker (no label) + time + category, then the user's text as the hero.
  * [contentPadding] / [contentGap] / [bodyMaxLines] default to the Records look; Home passes a more compact size.
+ * [onClick] null → display only; [metaText] replaces the time line (e.g. "지금 · 오후 8:42").
  */
 @Composable
 fun RecordCard(
     item: RecordWithCategory,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(AppTheme.tokens.spacing.cardPadding),
     contentGap: Dp = AppTheme.tokens.spacing.sm,
     bodyMaxLines: Int = 3,
+    metaText: String? = null,
 ) {
     val t = AppTheme.tokens
-    val interaction = remember { MutableInteractionSource() }
-    Surface(
-        onClick = onClick,
-        interactionSource = interaction,
-        shape = t.radii.card,
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(t.sizes.hairline, t.border),
-        modifier = modifier.fillMaxWidth().softGive(interaction),
-    ) {
+    val content: @Composable () -> Unit = {
         Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(contentGap)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
                 item.record.emotion?.let { EmotionMarker(it, t.sizes.markerXs) }
                 Text(
-                    text = TimeFormat.cardMeta(item.record.createdAt),
+                    text = metaText ?: TimeFormat.cardMeta(item.record.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = t.textTertiary,
                     maxLines = 1,
@@ -65,5 +59,26 @@ fun RecordCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+    if (onClick == null) {
+        // Display only (e.g. "방금 남긴 생각" on Related Memories): same card, no press feedback.
+        Surface(
+            shape = t.radii.card,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(t.sizes.hairline, t.border),
+            modifier = modifier.fillMaxWidth(),
+            content = content,
+        )
+    } else {
+        val interaction = remember { MutableInteractionSource() }
+        Surface(
+            onClick = onClick,
+            interactionSource = interaction,
+            shape = t.radii.card,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(t.sizes.hairline, t.border),
+            modifier = modifier.fillMaxWidth().softGive(interaction),
+            content = content,
+        )
     }
 }

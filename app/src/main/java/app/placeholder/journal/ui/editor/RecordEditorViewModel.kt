@@ -5,6 +5,12 @@ import androidx.lifecycle.viewModelScope
 import app.placeholder.journal.data.RecordRepository
 import app.placeholder.journal.data.db.CategoryEntity
 import app.placeholder.journal.data.model.Emotion
+import app.placeholder.journal.related.NoOpRelatedRecordFinder
+import app.placeholder.journal.related.RelatedRecordFinder
+import app.placeholder.journal.related.relatedIdsToShow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,15 +35,26 @@ data class EditorState(
     val canSave: Boolean get() = loaded && !saving && !saved && text.isNotBlank() // !saved: no double save during the feedback
 }
 
-/** Create when [recordId] is null, edit otherwise. Emotion and category are optional. */
+/** A new record that has related past records: open Related Memories with these (finder order, ≤ 5). */
+data class RelatedAfterSave(val recordId: String, val relatedIds: List<String>)
+
+/**
+ * Create when [recordId] is null, edit otherwise. Emotion and category are optional.
+ * M4: a NEW record that is not the first one also asks [relatedFinder] — started right after the write,
+ * so it runs while the save jelly plays. Edits and the first record never ask.
+ */
 class RecordEditorViewModel(
     private val repository: RecordRepository,
     private val recordId: String?,
+    private val relatedFinder: RelatedRecordFinder = NoOpRelatedRecordFinder(),
 ) : ViewModel() {
     val isEditing: Boolean = recordId != null
 
     private val _state = MutableStateFlow(EditorState(loaded = recordId == null))
     val state: StateFlow<EditorState> = _state.asStateFlow()
+
+    private var createdId: String? = null
+    private var related: Deferred<List<String>>? = null
 
     val categories: StateFlow<List<CategoryEntity>> = repository.observeCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -65,13 +82,37 @@ class RecordEditorViewModel(
         viewModelScope.launch {
             var first = false
             if (recordId == null) {
-                repository.create(s.text, s.emotion, s.categoryId)
+                val id = repository.create(s.text, s.emotion, s.categoryId)
                 // Read after the write has committed; the save itself is never delayed by the feedback UI.
                 first = repository.observeRecords().first().size == 1
+                if (!first) {
+                    createdId = id
+                    related = viewModelScope.async { findRelated(id) }
+                }
             } else {
                 repository.update(recordId, s.text, s.emotion, s.categoryId)
             }
             _state.update { it.copy(saving = false, saved = true, firstRecord = first) }
         }
+    }
+
+    /**
+     * Where to go after the save feedback: null → the normal flow (no results, an edit, or the first record);
+     * otherwise Related Memories. Waits for the finder if it is still running (no spinner in M4).
+     */
+    suspend fun awaitRelated(): RelatedAfterSave? {
+        val id = createdId ?: return null
+        val ids = related?.await().orEmpty()
+        return if (ids.isEmpty()) null else RelatedAfterSave(id, ids)
+    }
+
+    private suspend fun findRelated(id: String): List<String> = try {
+        val saved = repository.observeRecord(id).first()
+        if (saved == null) emptyList()
+        else relatedIdsToShow(id, relatedFinder.findRelated(saved, RelatedRecordFinder.LIMIT))
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emptyList() // a failing finder must never break saving: fall back to the normal flow
     }
 }

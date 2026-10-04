@@ -25,9 +25,9 @@ app/src/main/java/app/placeholder/journal/
   JournalApplication.kt   AppContainer (database, repository, relatedFinder, resurfacer)
   MainActivity.kt
   data/        model(Emotion, RecordWithCategory) · db(Entity, Dao, AppDatabase, Converters, DefaultCategories) · RecordRepository
-  related/     RelatedRecordFinder + NoOpRelatedRecordFinder — 저장 직후 "의미상" 관련된 과거 기록 (추상화만, 구현은 추후)
+  related/     RelatedRecordFinder(LIMIT 5) + NoOpRelatedRecordFinder — 저장 직후 "의미상" 관련된 과거 기록 (추상화만, 실제 구현은 M5). src/debug에만 M4 확인용 DebugRelatedRecordFinder(기본 OFF)
   resurface/   ResurfacedRecordSelector + DateBased… — Home "다시 만난 생각": "시간이 지나서" 다시 만나는 기록 (날짜 규칙, AI 없음)
-  ui/          theme(토큰, AppFonts) · components(EmotionMarker, Motion/JellyCurve, SaveSuccess, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation(홈·기록 하단 탭) · home · records(목록·캘린더, RecordsCalendar 순수 로직) · editor · detail
+  ui/          theme(토큰, AppFonts) · components(EmotionMarker, Motion/JellyCurve, SaveSuccess, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation(홈·기록 하단 탭) · home · related(Related Memories) · records(목록·캘린더, RecordsCalendar 순수 로직) · editor · detail
   util/        TimeFormat
 design/figma-ui-builder/  Figma Plugin API 기반 UI Builder (Figma MCP 사용 안 함)
 docs/        design-freeze.md · TODO.md · font.md (LINE Seed Sans KR) · licenses/
@@ -36,7 +36,7 @@ docs/        design-freeze.md · TODO.md · font.md (LINE Seed Sans KR) · licen
 ## 명령
 
 ```bash
-./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest, TypographyTest, RecordsCalendarTest, ResurfacedRecordSelectorTest
+./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest, TypographyTest, RecordsCalendarTest, ResurfacedRecordSelectorTest, RelatedMemoriesTest
 ./gradlew connectedAndroidTest # RecordDaoTest (기기/에뮬레이터)
 ./gradlew assembleDebug
 
@@ -49,7 +49,8 @@ cd design/figma-ui-builder && npm install && npm run build && npm run typecheck 
 - M1.5 UI/브랜드 폴리싱: 앱 이름 오늘문득, Design Freeze 정렬(radius·app bar·FAB·empty state·editor panel·edge-to-edge), jelly squash & stretch, splash intro(~1.5s), 폰트 LINE Seed Sans KR 확정, 저장 성공 jelly("통!") 피드백.
 - M2 기록 영역: 목록/캘린더 전환, 월간 캘린더(emotion dot 최대 3개), 날짜 선택 → 그날 기록 → 상세, 카테고리 필터(목록·캘린더 공통). 상태는 `RecordListViewModel`(메모리), 날짜 계산은 `TimeFormat.dayKey` 하나로 통일. DAO/schema 변경 없음.
 - M3 Home (완료, visual 확정): 시작 화면 Home, 하단 탭(홈·기록). 브랜드 헤더 없음(앱 이름은 splash) → 오늘 날짜(작게) → Hero "오늘은 어떤 생각이 / 문득 떠올랐나요?" → 큰 작성 영역 "지금 떠오르는 생각을 남겨보세요…"(입력 아님, 탭하면 기존 Editor) → "다시 만난 생각"(설명문 + history 아이콘·상대 시간 + 원문 + 감정 마커·날짜·카테고리; 14일 이상 지난 기록 중 1년 → 3개월 → 1개월 전 ±7일, 결정적 선택, 없으면 섹션 숨김) → "최근 기록" compact 카드 3개 + 전체 보기. 같은 Room Flow 재사용.
-- 다음: **M4 "문득, 그때"** — 저장 직후 관련 과거 기록을 보여주는 Related Memories flow (`RelatedRecordFinder` 연결, 결과 없으면 기존 저장 흐름 그대로). semantic retrieval / embedding / LLM은 아직 구현하지 않는다.
+- M4 "문득, 그때" (완료, 실기기 UX 확인): 새 기록 저장(첫 기록·수정 제외) 직후 `RelatedRecordFinder`(limit 5)를 jelly와 동시에 실행. 결과 0개 → 기존 저장 흐름, 1~5개 → jelly 600ms + "저장했어요" 약 500ms 후 Related Memories(진입 850ms fade + 12dp rise, Reduce Motion은 짧은 fade)(Thread B v3: headline · 방금 남긴 생각 card · Memory Entry 최대 5개, finder 순서 유지, 순위/점수/AI 설명 없음, 하단 버튼 없음, X로 시작 탭 복귀, 과거 기록 → Detail → back → Related). production finder는 M5 전까지 NoOp. Detail "이어지는 기록"·관계 persistence 없음.
+- 다음: **M5** — 실제 관련 기록 찾기(synthetic dataset, embedding cosine, threshold, heuristic, 필요 시 local LLM rerank 비교). M4 = 연결이 발견됐을 때의 경험, M5 = 가치 있는 연결을 찾는 방법.
 - Figma / Design Freeze 동기화는 M4 이후 Home + Save Success + Related Memories를 한 번에 한다(그 전까지 Home·Save Success는 코드가 기준).
 
 M4 이후: Explore, Settings(내 감정 조각), 알림, 사진 picker, 온디바이스 AI(임베딩), 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
