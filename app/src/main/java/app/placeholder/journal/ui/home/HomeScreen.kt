@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.heightIn
@@ -48,9 +49,9 @@ import app.placeholder.journal.ui.theme.colors
 import app.placeholder.journal.util.TimeFormat
 
 /**
- * Home. Visual priority: 오늘문득 (page title) → 다시 만난 생각 (the core content, richest card) →
- * 오늘 기록하기 (a light, low action) → 최근 기록 (supporting). Sections appear only when they have
- * something real to show, so a new user sees just the title, the question and the action.
+ * Home (initial Figma hierarchy): small date → hero question → a writing space that opens the editor →
+ * 다시 만난 생각 → 최근 기록. No brand header — the app name lives on the splash; Home leads with
+ * "leave today's thought". Sections below appear only when they have something real to show.
  * Spacing: tight inside a section, wider between sections.
  */
 @Composable
@@ -68,18 +69,21 @@ fun HomeScreen(
     val sectionGap = t.spacing.xxl // between sections
     val titleGap = t.spacing.sm // section title → its content
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        HomeTitle()
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = t.spacing.screenPadding, end = t.spacing.screenPadding, top = t.spacing.xxs, bottom = t.spacing.xxl),
+            contentPadding = PaddingValues(start = t.spacing.screenPadding, end = t.spacing.screenPadding, top = t.spacing.xl, bottom = t.spacing.xxl),
         ) {
-            item(key = "write") { WriteToday(onClick = onWrite) }
+            item(key = "write") { WriteToday(today = TimeFormat.monthDayWeekday(state.today), onClick = onWrite) }
 
             if (!state.loading) {
                 state.resurfaced?.let { resurfaced ->
                     item(key = "resurfaced-title") {
-                        SectionTitle("다시 만난 생각", Modifier.padding(top = sectionGap, bottom = titleGap))
+                        SectionTitle(
+                            "다시 만난 생각",
+                            Modifier.padding(top = sectionGap + t.spacing.xs, bottom = titleGap),
+                            subtitle = "시간이 지나 다시 나타난 지난 기록이에요.",
+                        )
                     }
                     item(key = "resurfaced-${resurfaced.item.record.id}") {
                         ResurfacedCard(resurfaced, onClick = { onOpenRecord(resurfaced.item.record.id) })
@@ -112,66 +116,48 @@ fun HomeScreen(
     }
 }
 
-/** Page title: one step calmer than the app-bar title so it never competes with the content. */
-@Composable
-private fun HomeTitle() {
-    val t = AppTheme.tokens
-    Box(
-        contentAlignment = Alignment.CenterStart,
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .height(t.sizes.appBar)
-            .padding(horizontal = t.spacing.screenPadding),
-    ) {
-        Text(
-            text = "오늘문득",
-            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 28.sp),
-            color = t.textPrimary,
-        )
-    }
-}
-
 /**
- * The write action: the question and one low, wide row (48dp) that opens the existing editor.
- * Frequent but light — it must not read as the hero of Home.
+ * Top of Home: a small date, the hero question (the first thing read), and a writing space.
+ * The space is a plain surface, not a TextField: tapping anywhere opens the existing editor.
+ * No mood button, no send arrow — nothing that pretends to be an input control.
  */
 @Composable
-private fun WriteToday(onClick: () -> Unit) {
+private fun WriteToday(today: String, onClick: () -> Unit) {
     val t = AppTheme.tokens
     val interaction = remember { MutableInteractionSource() }
-    Column(verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
-        // The first thing read after the title: 16 Medium in the main ink — no colored emphasis.
+    Column {
         Text(
-            text = "오늘은 어떤 생각이 문득 떠올랐나요?",
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
-            color = t.textPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            text = today, // "10월 4일 일요일"
+            style = MaterialTheme.typography.labelLarge, // 13sp Regular
+            color = t.textSecondary,
         )
+        Spacer(Modifier.height(t.spacing.xs))
+        Text(
+            text = "오늘은 어떤 생각이\n문득 떠올랐나요?",
+            style = MaterialTheme.typography.displaySmall.copy(fontSize = 25.sp, lineHeight = 34.sp), // Bold
+            color = t.textPrimary,
+        )
+        Spacer(Modifier.height(t.spacing.lg))
         Surface(
             onClick = onClick,
             interactionSource = interaction,
-            shape = t.radii.lg,
+            shape = t.radii.hero,
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(t.sizes.hairline, t.border),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).softGive(interaction), // 56 → 48
+            modifier = Modifier.fillMaxWidth().softGive(interaction),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = t.spacing.lg, end = t.spacing.md),
-            ) {
+            Box(Modifier.heightIn(min = 112.dp).padding(t.spacing.lg)) {
                 Text(
-                    text = "생각 남기기",
+                    text = "지금 떠오르는 생각을 남겨보세요…",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = t.textPrimary,
-                    modifier = Modifier.weight(1f),
+                    color = t.textSecondary,
+                    modifier = Modifier.align(Alignment.TopStart),
                 )
                 Icon(
                     Icons.Filled.Edit,
-                    contentDescription = null, // the row's text names the action
+                    contentDescription = "생각 남기기",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).size(20.dp),
                 )
             }
         }
@@ -241,15 +227,20 @@ private fun SectionTitle(
     modifier: Modifier = Modifier,
     action: String? = null,
     onAction: () -> Unit = {},
+    subtitle: String? = null,
 ) {
     val t = AppTheme.tokens
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
-            color = t.textSecondary,
-            modifier = Modifier.weight(1f),
-        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+                color = t.textSecondary,
+            )
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = t.textTertiary)
+            }
+        }
         if (action != null) {
             // secondary action: small and quiet, but still a 48dp touch target
             TextButton(
