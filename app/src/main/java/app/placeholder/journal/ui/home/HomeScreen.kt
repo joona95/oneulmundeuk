@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
@@ -32,9 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -145,14 +141,9 @@ private fun WriteToday(onClick: () -> Unit) {
     val t = AppTheme.tokens
     val interaction = remember { MutableInteractionSource() }
     Column(verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
-        // The first thing read after the title: 16 Medium in the main ink, only "문득" in Sage.
-        val accent = MaterialTheme.colorScheme.primary
+        // The first thing read after the title: 16 Medium in the main ink — no colored emphasis.
         Text(
-            text = buildAnnotatedString {
-                append("오늘은 어떤 생각이 ")
-                withStyle(SpanStyle(color = accent, fontWeight = FontWeight.SemiBold)) { append("문득") }
-                append(" 떠올랐나요?")
-            },
+            text = "오늘은 어떤 생각이 문득 떠올랐나요?",
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
             color = t.textPrimary,
             maxLines = 1,
@@ -211,21 +202,17 @@ private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
         border = BorderStroke(t.sizes.hairline, edge),
         modifier = Modifier.fillMaxWidth().softGive(interaction),
     ) {
-        // 24 → 20 vertical padding, 16 → 12 between rows (≈15% lower); horizontal 24 kept for the quote.
+        // Content-sized (no fixed height): 16 vertical padding, 10 between rows; horizontal 24 kept for the quote.
         Column(
-            Modifier.padding(horizontal = t.spacing.xl, vertical = t.spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(t.spacing.sm),
+            Modifier.padding(horizontal = t.spacing.xl, vertical = t.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // "3개월 전쯤" with a tiny dot in the record's own emotion color (Sage when it has none).
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(6.dp).background(emotionFill ?: MaterialTheme.colorScheme.primary, CircleShape))
-                Text(
-                    text = resurfaced.period.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
+            Text(
+                text = resurfaced.period.label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
             Text(
                 text = record.text,
                 style = MaterialTheme.typography.bodyLarge,
