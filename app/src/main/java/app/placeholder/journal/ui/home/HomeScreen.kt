@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
@@ -175,7 +176,7 @@ private fun WriteToday(onClick: () -> Unit) {
 
 /**
  * "다시 만난 생각" card — the richest element on Home: the user's own words in the larger reading size,
- * a soft period label, then date / emotion / category. A faint (7%) wash of the record's emotion.
+ * a soft period label, then date / emotion / category. A faint (5%) wash and edge of the record's emotion.
  * No explanations, no "AI", no scores.
  */
 @Composable
@@ -183,23 +184,31 @@ private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
     val t = AppTheme.tokens
     val record = resurfaced.item.record
     val surface = MaterialTheme.colorScheme.surface
-    val wash = record.emotion?.colors()?.fill?.copy(alpha = 0.07f)?.compositeOver(surface) ?: surface
+    // The only tinted surface on Home: a ~5% wash of the record's own emotion color, and an edge drawn
+    // from that same color instead of the neutral beige line the other cards use. No emotion → neutral.
+    val emotionFill = record.emotion?.colors()?.fill
+    val wash = emotionFill?.copy(alpha = 0.05f)?.compositeOver(surface) ?: surface
+    val edge = emotionFill?.copy(alpha = 0.28f)?.compositeOver(surface) ?: t.border
     val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
         interactionSource = interaction,
         shape = t.radii.hero,
         color = wash,
-        border = BorderStroke(t.sizes.hairline, t.border),
+        border = BorderStroke(t.sizes.hairline, edge),
         modifier = Modifier.fillMaxWidth().softGive(interaction),
     ) {
         Column(Modifier.padding(t.spacing.xl), verticalArrangement = Arrangement.spacedBy(t.spacing.md)) {
-            Text(
-                text = resurfaced.period.label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+            // "3개월 전쯤" with a tiny Sage dot — a quiet sign that this thought came back on its own.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                Text(
+                    text = resurfaced.period.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
             Text(
                 text = record.text,
                 style = MaterialTheme.typography.bodyLarge,
