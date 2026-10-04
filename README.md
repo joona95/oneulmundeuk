@@ -1,4 +1,6 @@
-# Local-first 기록 앱 — Android foundation (milestone 1)
+# 오늘문득 — local-first Android app
+
+Status: M1 · M1.5 · M2 (Records/Calendar) · M3 (Home) done. Next: M4 "문득, 그때" (Related Memories after saving). See `CLAUDE.md` / `docs/TODO.md`.
 
 Kotlin · Jetpack Compose · Material 3 · Room · Coroutines/Flow · Navigation Compose (type-safe).
 There is no server and no login. Every record stays on the device. The app has no `INTERNET` permission, and records are excluded from cloud backup and device transfer.
@@ -15,7 +17,7 @@ There is no server and no login. Every record stays on the device. The app has n
 From the command line:
 
 ```bash
-./gradlew test                    # JVM unit tests (EmotionConverter, TimeFormat)
+./gradlew test                    # JVM unit tests (EmotionConverter, TimeFormat, Motion, Typography, RecordsCalendar, ResurfacedRecordSelector)
 ./gradlew assembleDebug           # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew connectedDebugAndroidTest   # Room DAO/repository test (needs an emulator/device)
 ```
@@ -24,18 +26,19 @@ From the command line:
 
 ```
 app/src/main/java/app/placeholder/journal/
-├─ JournalApplication.kt     AppContainer (manual DI: database, repository, relatedFinder)
+├─ JournalApplication.kt     AppContainer (manual DI: database, repository, relatedFinder, resurfacer)
 ├─ MainActivity.kt
 ├─ data/
 │  ├─ db/      AppDatabase (v1) · RecordEntity · CategoryEntity · RecordDao · CategoryDao · EmotionConverter · DefaultCategories
 │  ├─ model/   Emotion (stable keys) · RecordWithCategory
 │  └─ RecordRepository.kt
-├─ related/    RelatedRecordFinder + NoOpRelatedRecordFinder (no AI yet)
+├─ related/    RelatedRecordFinder + NoOpRelatedRecordFinder (no AI yet; wired in M4)
+├─ resurface/  ResurfacedRecordSelector + DateBased… (Home "다시 만난 생각", date rule, no AI)
 ├─ ui/
 │  ├─ theme/   Design Freeze tokens: Color · EmotionPalette · Type · Dimens · Shape · Theme (AppTheme.tokens)
 │  ├─ components/ EmotionMarker (jelly shapes) · EmotionPicker · CategoryChips/Tag · RecordCard · Motion · Common
-│  ├─ navigation/ Routes · AppNavHost
-│  ├─ records/ · editor/ · detail/   Screen + ViewModel per screen
+│  ├─ navigation/ Routes · AppNavHost · BottomBar (홈 · 기록)
+│  ├─ home/ · records/ (list + calendar) · editor/ · detail/ · splash/   Screen + ViewModel per screen
 │  └─ AppViewModelFactory.kt
 └─ util/TimeFormat.kt        Korean date/time strings
 ```
@@ -62,6 +65,6 @@ The Room schema JSON is exported to `app/schemas/` on build, so commit it to ver
   - Selected emotion state is a subtle halo, the marker one step larger (28 → 32dp) and a semibold label. There is no black ring.
 - **Motion.** Selecting an emotion squishes and settles once. Cards give softly while pressed. Nothing animates while idle. Motion is skipped when the system "Remove animations" setting is on.
 
-## Not in this milestone
+## Not implemented yet
 
-Home rediscovery, Calendar, Explore, Settings (incl. 내 감정 조각 picker), Related Memories UI, notifications, photo picker, embedding/LLM, DB encryption. See `docs/TODO.md`.
+Related Memories after saving (M4, next), Explore, Settings (incl. 내 감정 조각 picker), notifications, photo picker, embedding/LLM, DB encryption. See `docs/TODO.md`.

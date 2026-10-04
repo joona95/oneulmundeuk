@@ -46,11 +46,13 @@ cd design/figma-ui-builder && npm install && npm run build && npm run typecheck 
 ## 현재 상태
 
 - M1 Foundation: 기록 목록 → 새 기록 → 감정/카테고리 선택 → Room 저장 → 목록 반영 → 상세 → 수정/삭제. API 35 에뮬레이터에서 검증 완료.
-- M1.5 UI/브랜드 폴리싱: 앱 이름 오늘문득, Design Freeze 정렬(radius·app bar·FAB·empty state·editor panel·edge-to-edge), jelly squash & stretch, splash intro(~0.9s), 폰트 LINE Seed Sans KR 확정, 저장 성공 jelly("통!") 피드백. 실기기 확인 후 Figma/Design Freeze 반영 예정.
+- M1.5 UI/브랜드 폴리싱: 앱 이름 오늘문득, Design Freeze 정렬(radius·app bar·FAB·empty state·editor panel·edge-to-edge), jelly squash & stretch, splash intro(~0.9s), 폰트 LINE Seed Sans KR 확정, 저장 성공 jelly("통!") 피드백.
 - M2 기록 영역: 목록/캘린더 전환, 월간 캘린더(emotion dot 최대 3개), 날짜 선택 → 그날 기록 → 상세, 카테고리 필터(목록·캘린더 공통). 상태는 `RecordListViewModel`(메모리), 날짜 계산은 `TimeFormat.dayKey` 하나로 통일. DAO/schema 변경 없음.
-- M3 Home: 시작 화면 Home, 하단 탭(홈·기록). 오늘 기록하기 → 기존 Editor, "다시 만난 생각"(14일 이상 지난 기록 중 1년 → 3개월 → 1개월 전 ±7일, 결정적 선택, 없으면 섹션 숨김), 최근 기록 3개 + 전체 보기. 같은 Room Flow 재사용.
+- M3 Home (완료, visual 확정): 시작 화면 Home, 하단 탭(홈·기록). 브랜드 헤더 없음(앱 이름은 splash) → 오늘 날짜(작게) → Hero "오늘은 어떤 생각이 / 문득 떠올랐나요?" → 큰 작성 영역 "지금 떠오르는 생각을 남겨보세요…"(입력 아님, 탭하면 기존 Editor) → "다시 만난 생각"(설명문 + history 아이콘·상대 시간 + 원문 + 감정 마커·날짜·카테고리; 14일 이상 지난 기록 중 1년 → 3개월 → 1개월 전 ±7일, 결정적 선택, 없으면 섹션 숨김) → "최근 기록" compact 카드 3개 + 전체 보기. 같은 Room Flow 재사용.
+- 다음: **M4 "문득, 그때"** — 저장 직후 관련 과거 기록을 보여주는 Related Memories flow (`RelatedRecordFinder` 연결, 결과 없으면 기존 저장 흐름 그대로). semantic retrieval / embedding / LLM은 아직 구현하지 않는다.
+- Figma / Design Freeze 동기화는 M4 이후 Home + Save Success + Related Memories를 한 번에 한다(그 전까지 Home·Save Success는 코드가 기준).
 
-범위 밖 (다음 milestone): Explore, Settings(내 감정 조각), Related Memories UI, 알림, 사진 picker, 온디바이스 AI(임베딩), 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
+M4 이후: Explore, Settings(내 감정 조각), 알림, 사진 picker, 온디바이스 AI(임베딩), 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
 
 ## 디자인 원칙 요약
 
