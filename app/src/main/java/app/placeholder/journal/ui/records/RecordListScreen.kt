@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,8 +33,8 @@ import app.placeholder.journal.ui.container
 import app.placeholder.journal.ui.theme.AppTheme
 
 /**
- * Records: 목록 / 캘린더 with one shared category filter. "기록" is the screen's function name, not the
- * app brand. Edge-to-edge: content scrolls behind the transparent navigation bar; the FAB sits above it.
+ * Records: 목록 / 캘린더 with one shared category filter. Page title 기록 (Home and Explore use their hero instead;
+ * Settings uses 설정). Edge-to-edge: content scrolls behind the transparent navigation bar; the FAB sits above it.
  */
 @Composable
 fun RecordListScreen(
@@ -42,6 +44,10 @@ fun RecordListScreen(
 ) {
     val t = AppTheme.tokens
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // One scroll position per view, hoisted above the mode switch so each survives switching back and
+    // forth; rememberLazyListState is saveable, so it also survives going to Detail and back.
+    val listScroll = rememberLazyListState()
+    val calendarScroll = rememberLazyListState()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -57,37 +63,46 @@ fun RecordListScreen(
                     body = "떠오르는 생각을 한 줄만 남겨도 괜찮아요.",
                     modifier = Modifier.align(BiasAlignment(0f, -0.25f)).padding(horizontal = t.spacing.screenPadding),
                 )
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = t.spacing.xs,
-                        bottom = t.sizes.fab + t.spacing.xxl + t.spacing.md, // FAB never covers the last card
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(t.spacing.listGap),
-                ) {
-                    item(key = "controls") {
-                        Column(verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
-                            ViewModeToggle(
-                                mode = state.mode,
-                                onChange = viewModel::setMode,
-                                modifier = Modifier.padding(horizontal = t.spacing.screenPadding),
+                // Fixed controls + scrolling content. The 목록/캘린더 switch and the filter used to be the
+                // first item of the LazyColumn, so they scrolled off the top (and a list scroll offset carried
+                // over into the calendar). Now they stay pinned while only the records / calendar scroll.
+                else -> Column(Modifier.fillMaxSize()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(t.spacing.sm),
+                        modifier = Modifier.padding(top = t.spacing.xs, bottom = t.spacing.listGap),
+                    ) {
+                        ViewModeToggle(
+                            mode = state.mode,
+                            onChange = viewModel::setMode,
+                            modifier = Modifier.padding(horizontal = t.spacing.screenPadding),
+                        )
+                        if (state.categories.isNotEmpty()) {
+                            CategoryChips(
+                                categories = state.categories,
+                                selectedId = state.selectedCategoryId,
+                                onSelect = viewModel::selectCategory,
+                                contentPadding = PaddingValues(horizontal = t.spacing.screenPadding),
+                                allLabel = "전체",
                             )
-                            if (state.categories.isNotEmpty()) {
-                                CategoryChips(
-                                    categories = state.categories,
-                                    selectedId = state.selectedCategoryId,
-                                    onSelect = viewModel::selectCategory,
-                                    contentPadding = PaddingValues(horizontal = t.spacing.screenPadding),
-                                    allLabel = "전체",
-                                )
-                            }
                         }
                     }
-                    when (state.mode) {
-                        RecordsViewMode.List -> listContent(state, onOpenRecord)
-                        RecordsViewMode.Calendar -> calendarContent(state, viewModel, onOpenRecord)
+                    // Each view keeps its own scroll position (see listScroll / calendarScroll above).
+                    key(state.mode) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            state = if (state.mode == RecordsViewMode.List) listScroll else calendarScroll,
+                            contentPadding = PaddingValues(
+                                bottom = t.sizes.fab + t.spacing.xxl + t.spacing.md, // FAB never covers the last card
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(t.spacing.listGap),
+                        ) {
+                            when (state.mode) {
+                                RecordsViewMode.List -> listContent(state, onOpenRecord)
+                                RecordsViewMode.Calendar -> calendarContent(state, viewModel, onOpenRecord)
+                            }
+                            item(key = "nav-bar-space") { Box(Modifier.navigationBarsPadding()) }
+                        }
                     }
-                    item(key = "nav-bar-space") { Box(Modifier.navigationBarsPadding()) }
                 }
             }
 

@@ -56,7 +56,8 @@ const val BRAND_NAME = "오늘문득"
  * durations are shorter and the name overlaps the settle instead of waiting for it.
  *   before: drop 300 · squash 100 · rebound 170 · settle ~240 · (name 260 after settle) · hold 260 · fade 220
  *   then:   drop 220 · squash  80 · rebound 130 · settle ~200 · (name 200 from rebound+60) · hold 120 · fade 160
- *   now:    drop 240 · squash  80 · rebound 140 · settle ~200 · (name 200 from rebound+60) · hold 300 · fade 190  (~1.15s)
+ *   then:   drop 240 · squash  80 · rebound 140 · settle ~200 · (name 200 from rebound+60) · hold 300 · fade 190  (~1.15s)
+ *   now:    same motion, hold 650 (~1.5s) — time to read the finished jelly + 오늘문득 before Home
  *   Most of the added time is the final hold, so the jelly + 오늘문득 register before Home; the motion stays brisk.
  */
 object SplashMotion {
@@ -65,7 +66,7 @@ object SplashMotion {
     const val SQUASH = 80
     const val REBOUND = 140
     const val SETTLE = 200 // spring (stiffness 600, damping 0.55); approximate visual duration
-    const val HOLD = 300
+    const val HOLD = 650
     const val FADE_OUT = 190
     const val TOTAL = DROP + SQUASH + REBOUND + SETTLE + HOLD + FADE_OUT
 
@@ -84,7 +85,7 @@ object SplashMotion {
     const val REBOUND_LIFT_DP = 10f
 
     /** Reduce Motion: no movement, just a brief still frame of the mark and name. */
-    const val REDUCED_HOLD = 700
+    const val REDUCED_HOLD = 900
 }
 
 /**
@@ -154,7 +155,7 @@ fun SplashIntro(onFinished: () -> Unit) {
             .fillMaxSize()
             .alpha(overlayAlpha.value)
             .background(MaterialTheme.colorScheme.background)
-            // swallow taps during the ~1.15s intro
+            // swallow taps during the ~1.5s intro
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .semantics { contentDescription = BRAND_NAME },
     ) {

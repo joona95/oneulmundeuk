@@ -49,8 +49,8 @@ class MotionSpecTest {
 
     @Test
     fun splashIsBriefAndHasClearSquash() {
-        // Reads as a splash (~1.15s), not an intro animation.
-        assertTrue(SplashMotion.TOTAL in 1100..1250)
+        // Reads as a splash (~1.5s), not an intro animation.
+        assertTrue(SplashMotion.TOTAL in 1450..1550)
         assertTrue(SplashMotion.SQUASH_X > 1.2f && SplashMotion.SQUASH_Y < 0.8f)
         assertTrue(SplashMotion.STRETCH_X < 1f && SplashMotion.STRETCH_Y > 1f)
         assertTrue(SplashMotion.REDUCED_HOLD < SplashMotion.TOTAL)
@@ -72,7 +72,7 @@ class MotionSpecTest {
         // The name starts during the rebound and is fully in before the jelly finishes settling.
         assertTrue(SplashMotion.NAME_DELAY_IN_REBOUND < SplashMotion.REBOUND)
         assertTrue(SplashMotion.NAME_DELAY_IN_REBOUND + SplashMotion.NAME_FADE <= SplashMotion.REBOUND + SplashMotion.SETTLE)
-        assertTrue(SplashMotion.HOLD in 200..350) // a short, still brand moment before Home
+        assertTrue(SplashMotion.HOLD in 550..700) // a short, still brand moment before Home
     }
 
     @Test
