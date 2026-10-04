@@ -31,7 +31,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -193,12 +197,16 @@ private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
             Modifier.padding(horizontal = t.spacing.xl, vertical = t.spacing.md),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                text = resurfaced.period.label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+            // ↶ 3개월 전쯤 — "a record that came back after time passed", in one muted ink.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(HistoryIcon, contentDescription = null, tint = t.textSecondary, modifier = Modifier.size(15.dp))
+                Text(
+                    text = resurfaced.period.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = t.textSecondary,
+                )
+            }
             Text(
                 text = record.text,
                 style = MaterialTheme.typography.bodyLarge,
@@ -235,7 +243,7 @@ private fun SectionTitle(
             Text(
                 title,
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
-                color = t.textSecondary,
+                color = t.textPrimary,
             )
             if (subtitle != null) {
                 Text(subtitle, style = MaterialTheme.typography.labelSmall, color = t.textTertiary)
@@ -253,3 +261,22 @@ private fun SectionTitle(
         }
     }
 }
+
+/**
+ * Material "history" glyph (Apache 2.0), defined here because it is not in material-icons-core and the
+ * extended icon set is not a dependency.
+ */
+private val HistoryIcon: ImageVector = ImageVector.Builder(
+    name = "History",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).addPath(
+    pathData = addPathNodes(
+        "M13,3c-4.97,0 -9,4.03 -9,9L1,12l3.89,3.89 0.07,0.14L9,12L6,12c0,-3.87 3.13,-7 7,-7s7,3.13 7,7 " +
+            "-3.13,7 -7,7c-1.93,0 -3.68,-0.79 -4.94,-2.06l-1.42,1.42C8.27,19.99 10.51,21 13,21c4.97,0 9,-4.03 " +
+            "9,-9s-4.03,-9 -9,-9zM12,8v5l4.28,2.54 0.72,-1.21 -3.5,-2.08L13.5,8L12,8z",
+    ),
+    fill = SolidColor(Color.Black),
+).build()
