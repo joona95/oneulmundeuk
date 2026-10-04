@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,14 +23,15 @@ import app.placeholder.journal.util.TimeFormat
 
 /**
  * List card: tiny color marker (no label) + time + category, then the user's text as the hero.
- * [contentPadding] / [bodyMaxLines] default to the Records look; Home passes a slightly more compact size.
+ * [contentPadding] / [contentGap] / [bodyMaxLines] default to the Records look; Home passes a more compact size.
  */
 @Composable
 fun RecordCard(
     item: RecordWithCategory,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: Dp = AppTheme.tokens.spacing.cardPadding,
+    contentPadding: PaddingValues = PaddingValues(AppTheme.tokens.spacing.cardPadding),
+    contentGap: Dp = AppTheme.tokens.spacing.sm,
     bodyMaxLines: Int = 3,
 ) {
     val t = AppTheme.tokens
@@ -42,7 +44,7 @@ fun RecordCard(
         border = BorderStroke(t.sizes.hairline, t.border),
         modifier = modifier.fillMaxWidth().softGive(interaction),
     ) {
-        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
+        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(contentGap)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
                 item.record.emotion?.let { EmotionMarker(it, t.sizes.markerXs) }
                 Text(

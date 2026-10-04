@@ -32,6 +32,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -100,7 +103,9 @@ fun HomeScreen(
                             item,
                             onClick = { onOpenRecord(item.record.id) },
                             modifier = Modifier.padding(top = if (index == 0) 0.dp else t.spacing.xs),
-                            contentPadding = t.spacing.md,
+                            // compact on Home only: 16 → 10 vertical padding, 12 → 6 meta/body gap
+                            contentPadding = PaddingValues(horizontal = t.spacing.md, vertical = 10.dp),
+                            contentGap = 6.dp,
                             bodyMaxLines = 2,
                         )
                     }
@@ -132,7 +137,7 @@ private fun HomeTitle() {
 }
 
 /**
- * The write action: a quiet question and one low, wide row (56dp) that opens the existing editor.
+ * The write action: the question and one low, wide row (48dp) that opens the existing editor.
  * Frequent but light — it must not read as the hero of Home.
  */
 @Composable
@@ -140,10 +145,18 @@ private fun WriteToday(onClick: () -> Unit) {
     val t = AppTheme.tokens
     val interaction = remember { MutableInteractionSource() }
     Column(verticalArrangement = Arrangement.spacedBy(t.spacing.sm)) {
+        // The first thing read after the title: 16 Medium in the main ink, only "문득" in Sage.
+        val accent = MaterialTheme.colorScheme.primary
         Text(
-            text = "오늘은 어떤 생각이 문득 떠올랐나요?",
-            style = MaterialTheme.typography.bodyMedium,
-            color = t.textSecondary,
+            text = buildAnnotatedString {
+                append("오늘은 어떤 생각이 ")
+                withStyle(SpanStyle(color = accent, fontWeight = FontWeight.SemiBold)) { append("문득") }
+                append(" 떠올랐나요?")
+            },
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
+            color = t.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         Surface(
             onClick = onClick,
@@ -151,7 +164,7 @@ private fun WriteToday(onClick: () -> Unit) {
             shape = t.radii.lg,
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(t.sizes.hairline, t.border),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).softGive(interaction),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).softGive(interaction), // 56 → 48
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -198,10 +211,14 @@ private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
         border = BorderStroke(t.sizes.hairline, edge),
         modifier = Modifier.fillMaxWidth().softGive(interaction),
     ) {
-        Column(Modifier.padding(t.spacing.xl), verticalArrangement = Arrangement.spacedBy(t.spacing.md)) {
-            // "3개월 전쯤" with a tiny Sage dot — a quiet sign that this thought came back on its own.
+        // 24 → 20 vertical padding, 16 → 12 between rows (≈15% lower); horizontal 24 kept for the quote.
+        Column(
+            Modifier.padding(horizontal = t.spacing.xl, vertical = t.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(t.spacing.sm),
+        ) {
+            // "3개월 전쯤" with a tiny dot in the record's own emotion color (Sage when it has none).
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                Box(Modifier.size(6.dp).background(emotionFill ?: MaterialTheme.colorScheme.primary, CircleShape))
                 Text(
                     text = resurfaced.period.label,
                     style = MaterialTheme.typography.labelSmall,
@@ -230,7 +247,7 @@ private fun ResurfacedCard(resurfaced: ResurfacedRecord, onClick: () -> Unit) {
     }
 }
 
-/** One style for every Home section title (15 Bold) — smaller than the page title, above body text. */
+/** One style for every Home section title: 15 SemiBold in the secondary ink — quieter than the question above. */
 @Composable
 private fun SectionTitle(
     title: String,
@@ -242,8 +259,8 @@ private fun SectionTitle(
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             title,
-            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 22.sp),
-            color = t.textPrimary,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+            color = t.textSecondary,
             modifier = Modifier.weight(1f),
         )
         if (action != null) {
