@@ -94,9 +94,9 @@ class MotionSpecTest {
 
     @Test
     fun saveFeedbackDoesNotHoldTheNormalFlow() {
-        // normal save: feedback ≈ 0.5–0.7s, then navigation continues
-        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 500..700)
-        assertTrue(SaveFeedbackTiming.REDUCED_SAVED in 400..700)
+        // normal save: jelly (600ms) + a short still moment ≈ 0.9–1.0s, then navigation continues
+        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 900..1000)
+        assertTrue(SaveFeedbackTiming.REDUCED_SAVED in 700..900)
         // first record: same motion, a little longer so the message can be read
         assertTrue(SaveFeedbackTiming.HOLD_FIRST > SaveFeedbackTiming.HOLD_SAVED)
         assertEquals("저장했어요", SaveFeedbackCopy.SAVED)

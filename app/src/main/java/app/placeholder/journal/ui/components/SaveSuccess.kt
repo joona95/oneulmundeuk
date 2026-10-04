@@ -44,15 +44,15 @@ object SaveFeedbackCopy {
     const val FIRST_BODY = "오늘의 생각이 언젠가\n다시 문득 떠오를 거예요."
 }
 
-/** Timeline (ms). The overlay finishes right after the jelly settles; the first-record copy stays a bit to be read. */
+/** Timeline (ms). After the jelly settles the message stays briefly so the save registers; the first-record copy stays longer to be read. */
 object SaveFeedbackTiming {
     val MOTION = JellyCurve.saveSuccess.last().atMillis // 600
     const val SCRIM_IN = 120
     const val TEXT_DELAY = 120
     const val TEXT_IN = 180
-    const val HOLD_SAVED = 60
+    const val HOLD_SAVED = 350 // 600ms jelly + 350ms still "저장했어요" ≈ 0.95s
     const val HOLD_FIRST = 1100
-    const val REDUCED_SAVED = 550
+    const val REDUCED_SAVED = 800
     const val REDUCED_FIRST = 1500
 }
 
