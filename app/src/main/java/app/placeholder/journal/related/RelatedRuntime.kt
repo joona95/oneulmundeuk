@@ -1,5 +1,6 @@
 package app.placeholder.journal.related
 
+
 /**
  * What this build can do for related records. Chosen per build type by `createRelatedRuntime` (src/debug, src/release),
  * so `main` never references a model or a fake.
@@ -20,6 +21,12 @@ interface RelatedRuntime {
 
     /** After a record write and its invalidation committed (may have queued work). Must return immediately. */
     fun onRecordsChanged()
+
+    /**
+     * Explore search e5 (null = no local model in this build / runtime). The SAME embedder Related uses (shared
+     * `record_embedding` cache). Explore uses no LLM (experiments/search S1 · Thought Index PoC).
+     */
+    val textEmbedder: TextEmbedder?
 }
 
 object NoRelatedRuntime : RelatedRuntime {
@@ -27,4 +34,5 @@ object NoRelatedRuntime : RelatedRuntime {
     override val analysisEnabled: Boolean = false
     override fun start() = Unit
     override fun onRecordsChanged() = Unit
+    override val textEmbedder: TextEmbedder? = null
 }

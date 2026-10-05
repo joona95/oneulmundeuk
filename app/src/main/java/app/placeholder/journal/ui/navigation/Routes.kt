@@ -11,6 +11,17 @@ object HomeRoute
 @Serializable
 object RecordListRoute
 
+/** Explore (탐색) tab: "과거의 나에게 물어보세요." */
+@Serializable
+object ExploreRoute
+
+/**
+ * Semantic Search Results (inside the 탐색 tab). The question, plus [categoryHint] only when it came from an app category
+ * suggestion (the engine puts that category's e5 Top 3 first). Typed questions never carry a hint.
+ */
+@Serializable
+data class SearchResultsRoute(val query: String, val categoryHint: String? = null)
+
 /** recordId == null → new record; otherwise edit that record. */
 @Serializable
 data class RecordEditorRoute(val recordId: String? = null)

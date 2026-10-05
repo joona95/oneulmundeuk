@@ -45,24 +45,25 @@ fun CategoryChips(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (allLabel != null) {
-            item(key = "all") { Chip(allLabel, selected = selectedId == null, onClick = { onSelect(null) }) }
+            item(key = "all") { CategoryChip(allLabel, selected = selectedId == null, onClick = { onSelect(null) }) }
         }
         items(categories, key = { it.id }) { category ->
             val selected = category.id == selectedId
-            Chip(category.name, selected, onClick = { onSelect(if (selected) null else category.id) })
+            CategoryChip(category.name, selected, onClick = { onSelect(if (selected) null else category.id) })
         }
     }
 }
 
+/** One chip of [CategoryChips]; also used on its own (Explore topics in a wrapping row, search sort options). */
 @Composable
-private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
+fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val t = AppTheme.tokens
     Surface(
         onClick = onClick,
         shape = t.radii.full,
         color = if (selected) t.textPrimary else MaterialTheme.colorScheme.surface,
         border = BorderStroke(t.sizes.hairline, if (selected) t.textPrimary else t.border),
-        modifier = Modifier
+        modifier = modifier
             .heightIn(min = t.sizes.chipMinHeight)
             .semantics { this.selected = selected; role = Role.Checkbox },
     ) {

@@ -18,14 +18,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.placeholder.journal.ui.detail.RecordDetailScreen
 import app.placeholder.journal.ui.editor.RecordEditorScreen
+import app.placeholder.journal.ui.explore.ExploreScreen
+import app.placeholder.journal.ui.explore.SearchResultsScreen
 import app.placeholder.journal.ui.home.HomeScreen
 import app.placeholder.journal.ui.records.RecordListScreen
 import app.placeholder.journal.ui.related.RelatedMemoriesScreen
 
 /**
- * Two top-level tabs (홈 · 기록) with a bottom bar; Editor and Detail are full screens above them.
+ * Three top-level tabs (홈 · 기록 · 탐색) with a bottom bar; Editor and Detail are full screens above them.
  * Home → Editor(new) → save → back to Home
  * Home / Records → Detail → Editor(edit) → save → back to Detail → delete → back to the tab
  * Saving always ends the same way (back to where the editor was opened).
@@ -40,7 +43,8 @@ fun AppNavHost() {
     val currentTab = when {
         destination?.hierarchy?.any { it.hasRoute(HomeRoute::class) } == true -> TopTab.Home
         destination?.hierarchy?.any { it.hasRoute(RecordListRoute::class) } == true -> TopTab.Records
-        else -> null // Editor / Detail / Related Memories: no bottom bar
+        destination?.hierarchy?.any { it.hasRoute(ExploreRoute::class) || it.hasRoute(SearchResultsRoute::class) } == true -> TopTab.Explore
+        else -> null // Editor / Detail / Related Memories: no bottom bar (Search Results keeps the 탐색 tab's bar, Figma)
     }
 
     Scaffold(
@@ -62,9 +66,32 @@ fun AppNavHost() {
                     onSeeAllRecords = { nav.openTab(TopTab.Records) },
                 )
             }
-            composable<RecordListRoute> {
+            composable<RecordListRoute> { backStackEntry ->
+                val handle = backStackEntry.savedStateHandle
+                val requestedCategory by handle.getStateFlow<String?>(RECORDS_CATEGORY_REQUEST, null).collectAsStateWithLifecycle()
                 RecordListScreen(
                     onNewRecord = { nav.navigate(RecordEditorRoute()) },
+                    onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
+                    requestedCategoryId = requestedCategory,
+                    onCategoryRequestHandled = { handle[RECORDS_CATEGORY_REQUEST] = null },
+                )
+            }
+            composable<ExploreRoute> {
+                ExploreScreen(
+                    onSearch = { query, categoryHint -> nav.navigate(SearchResultsRoute(query, categoryHint)) },
+                    // 자주 등장한 주제 → the Records tab, filtered by that category (its own filter, not a new list).
+                    onOpenTopic = { categoryId ->
+                        nav.openTab(TopTab.Records)
+                        nav.getBackStackEntry<RecordListRoute>().savedStateHandle[RECORDS_CATEGORY_REQUEST] = categoryId
+                    },
+                )
+            }
+            composable<SearchResultsRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SearchResultsRoute>()
+                SearchResultsScreen(
+                    query = route.query,
+                    categoryHint = route.categoryHint,
+                    onBack = { nav.popBackStack() },
                     onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
                 )
             }
@@ -108,6 +135,9 @@ fun AppNavHost() {
     }
 }
 
+/** Explore topic → Records: the category to select once in the Records tab's own filter. */
+private const val RECORDS_CATEGORY_REQUEST = "records_category_request"
+
 /** Standard bottom-nav switch: one Home at the root, tab state saved and restored. */
 private fun NavHostController.openTab(tab: TopTab) {
     val options: NavOptionsBuilder.() -> Unit = {
@@ -118,5 +148,6 @@ private fun NavHostController.openTab(tab: TopTab) {
     when (tab) {
         TopTab.Home -> navigate(HomeRoute, options)
         TopTab.Records -> navigate(RecordListRoute, options)
+        TopTab.Explore -> navigate(ExploreRoute, options)
     }
 }

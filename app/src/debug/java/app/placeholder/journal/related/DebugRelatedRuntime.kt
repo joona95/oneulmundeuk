@@ -52,6 +52,9 @@ class DebugRelatedRuntime(
     override val activePipelineVersion: String? = if (on) RelatedPipeline.version(embedder, judge) else null
     override val analysisEnabled: Boolean get() = on
 
+    // Explore (same flag): the shared fake embedder stands in for e5 (debug only). Off → null → e5 questions unavailable.
+    override val textEmbedder: TextEmbedder? = if (on) embedder else null
+
     override fun start() {
         if (!on) return
         Log.i(TAG, "debug fake related ON (${if (slow) "slow" else "fast"}, $activePipelineVersion)")

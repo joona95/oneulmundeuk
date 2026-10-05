@@ -18,7 +18,7 @@
 - [ ] Figma + Design Freeze sync after M4: Home + Save Success + Related Memories in one pass (until then the code is the reference for Home / Save Success).
 
 ## Next feature milestones
-- [x] Bottom navigation: 홈 · 기록 (M3). 탐색 · 설정 tabs arrive with those screens.
+- [x] Bottom navigation: 홈 · 기록 (M3) · 탐색 (Explore MVP). 설정 tab arrives with its screen.
 - [ ] Settings › 내 감정 조각 (2-column grid) — persist `MarkerShape` (DataStore) and provide it via `AppTokens.markerShape`.
 - [x] Records Calendar (M2): 목록/캘린더 전환, 월 이동, 최대 3개 emotion dot, 날짜별 기록, 카테고리 필터(목록·캘린더 공통).
 - [ ] Records: remember the last view mode / filter (DataStore) — not in M2.
@@ -47,7 +47,15 @@
     - FAILED 재시도 정책: 최대 3회 · backoff. 현재 `requeue`는 attempts를 0으로 되돌리므로 attempts를 유지하는 재대기 경로를 이때 추가 (M6-3에서 보류).
   - [x] UI · 제품 결정 (2026-10-05): Home 카드 = 작성 영역 아래 · `다시 만난 생각` 위 · Detail 섹션 `이어지는 기록` · Related Memories 라벨 `이 생각에서` · 최초 분석 최신 10개 · 충전 조건 없음 · `나중에` 후 재제안 없음 · e5+Qwen 하나의 선택형 다운로드 · AI 결과 일괄 삭제 없음 (MVP). 남은 확인: 제안 sheet 문구(M6-5). (Home semantic 카드는 M6-4 실기기 확인 후 폐기 — 저장 직후 노출로 변경)
   - [ ] 실제 사용자 기록이 쌓인 뒤 정책(label 2만 · Top 30 · ≤ 5) 재평가. dataset v1.1로 더 튜닝하지 않는다.
-- [ ] Explore (semantic search), reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
+- [ ] Explore MVP (미커밋): Figma `Explore` / `Semantic Search Results` 구조 — hero · subtitle · 검색창 · 기기 안 검색 안내 · `이렇게 물어볼 수 있어요`(결정적 template, 탭 → 바로 검색) · `자주 등장한 주제`(기록이 있는 Category, 많은 순 → 기록 탭 해당 카테고리 필터). 결과 화면: 검색창 · `N개의 기록을 찾았어요` · 관련도순/시간순(같은 결과 집합) · RecordCard → Detail.
+  - **검색 production 결정 (experiments/search S1 · S2 · Thought Index PoC, 2026-10):** `search/ExploreSearch` = e5 only + 결정적 날짜 routing (`search/ExploreQuery`, s2_temporal.py 이식: 작년 이맘때 · 지난달 · 올해 초 · 작년 여름 · 올봄/올해 봄 · 작년/올해). 시간 표현 + 의미 → 날짜 필터 후 e5 순, 시간 표현만 → 날짜 순(모델 불필요), 그 외 → e5 Top10. LLM SearchJudge(S1에서 e5보다 나쁨) · LLM 추천 질문 생성(PoC grounding 4/4 실패) · Thought Index(채택 안 함)는 production에 없다.
+  - 추천 질문 = 날짜 template(해당 기간 기록 ≥ 2) 최대 2 + category template(기록 ≥ 3 · 14일 이상에 걸침, e5 있을 때만) → 최대 4, 부족하면 채우지 않음. aggregation 질문 추천 금지.
+  - category 추천 질문 클릭 = category hint: 그 category의 e5 Top 3 → 전체 e5 순서로 나머지(중복 제외) → 최대 10. score 보정 · strict filter 없음. 검색창에 직접 입력한 같은 문장에는 적용하지 않는다. 날짜 routing은 그대로.
+  - **Explore 검색 정책 실험은 여기서 종료 (2026-10).** 남은 검색 개선(no-result threshold, topic recurring/change, category hint 조정 등)은 실제 e5 / Qwen을 연결해 실사용한 뒤 결정한다.
+- [x] Explore 검색 실험 종료: S1 (e5 only가 최선, SearchJudge 제거) · S2 (날짜 routing 채택, multi-record selector는 보류) · Thought Index PoC (채택 안 함). 결과는 `experiments/search/results-*.md` (frozen).
+- [ ] Explore production e5: 실제 e5 `embedQuery`("query: " prefix) 연결(M6-7 runtime과 함께) · 검색 latency 측정 · no-result(유사도 threshold) 정책 · 결과 카드 match highlight(Figma).
+- [ ] Explore topic이 명시된 recurring / change ("잠 못 드는 밤이 반복됐던 때", "달리기에 대한 마음이 변했나?"): 실제 Qwen runtime이 생긴 뒤 topic 추출 → e5 high-recall 후보 → 작성일 순 multi-record Qwen 1회 (`ExploreQuery`에 variant 추가). 그 전까지 일반 e5. topic 없는 broad aggregation / change ("자꾸 반복되는 걱정", "생각을 바꾼 주제")는 MVP에서 특별 처리하지 않는다 (semantic clustering / index 테이블 추가하지 않음).
+- [ ] reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
 - [x] Editor: compact attribute panel while the keyboard is open (M1.5: labels and the big button hide; 저장 stays in the top bar).
 - [ ] Editor: consider a one-line toolbar (emotion/category as a single row) if the compact panel still feels tight on small screens.
 - [ ] Records List: search icon (Figma) arrives with Explore.

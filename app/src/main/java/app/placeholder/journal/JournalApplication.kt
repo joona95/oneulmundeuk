@@ -11,6 +11,9 @@ import app.placeholder.journal.related.RelatedStore
 import app.placeholder.journal.related.createRelatedRuntime
 import app.placeholder.journal.resurface.DateBasedResurfacedRecordSelector
 import app.placeholder.journal.resurface.ResurfacedRecordSelector
+import app.placeholder.journal.search.ExploreSearch
+import app.placeholder.journal.search.RoomSearchStorage
+import app.placeholder.journal.search.SemanticSearch
 
 /** Manual DI: one small container instead of a DI framework. */
 class AppContainer(app: Application) {
@@ -33,6 +36,11 @@ class AppContainer(app: Application) {
     val relatedRepository: RelatedRepository by lazy {
         RelatedRepository(RelatedStore(database.relatedDao(), relatedRuntime.activePipelineVersion), database.recordDao())
     }
+    /**
+     * Explore "과거의 나에게 물어보세요": e5 semantic search + deterministic date routing, no LLM judge.
+     * Without a local e5 (release today) only pure date questions are answered; others show "준비하고 있어요".
+     */
+    val semanticSearch: SemanticSearch by lazy { ExploreSearch(RoomSearchStorage(database), relatedRuntime.textEmbedder) }
     /** Home "다시 만난 생각" (date-based for now; swappable later). */
     val resurfacer: ResurfacedRecordSelector = DateBasedResurfacedRecordSelector()
 }

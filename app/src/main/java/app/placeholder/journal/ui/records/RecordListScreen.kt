@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.BiasAlignment
@@ -40,8 +41,17 @@ import app.placeholder.journal.ui.theme.AppTheme
 fun RecordListScreen(
     onNewRecord: () -> Unit,
     onOpenRecord: (String) -> Unit,
+    /** Set by Explore's 자주 등장한 주제: select this category (list view) once, then [onCategoryRequestHandled]. */
+    requestedCategoryId: String? = null,
+    onCategoryRequestHandled: () -> Unit = {},
     viewModel: RecordListViewModel = viewModel { RecordListViewModel(container().repository) },
 ) {
+    LaunchedEffect(requestedCategoryId) {
+        val id = requestedCategoryId ?: return@LaunchedEffect
+        viewModel.setMode(RecordsViewMode.List)
+        viewModel.selectCategory(id)
+        onCategoryRequestHandled()
+    }
     val t = AppTheme.tokens
     val state by viewModel.state.collectAsStateWithLifecycle()
     // One scroll position per view, hoisted above the mode switch so each survives switching back and

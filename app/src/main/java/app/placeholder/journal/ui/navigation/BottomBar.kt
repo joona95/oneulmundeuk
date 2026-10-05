@@ -16,6 +16,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,10 +35,11 @@ import app.placeholder.journal.ui.theme.AppTheme
 enum class TopTab(val label: String, val icon: ImageVector) {
     Home("홈", Icons.Filled.Home),
     Records("기록", Icons.AutoMirrored.Filled.List),
+    Explore("탐색", Icons.Filled.Search),
 }
 
 /**
- * Figma `Bottom Nav`, two tabs for now: white surface with a hairline top edge, 56 tall above the gesture
+ * Figma `Bottom Nav` (홈 · 기록 · 탐색; 설정 arrives with its screen): white surface with a hairline top edge, 56 tall above the gesture
  * area (system navigation inset kept). Active = charcoal icon on a small neutral pill + charcoal label;
  * inactive = tertiary. Each tab is the full 56dp-tall cell, so the touch target stays ≥ 48dp.
  * Deliberately not the M3 NavigationBar (tonal container, 80 tall).

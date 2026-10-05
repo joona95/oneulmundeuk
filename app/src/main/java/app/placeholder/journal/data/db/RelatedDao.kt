@@ -132,6 +132,14 @@ interface RelatedDao {
     @Query("SELECT id, text, created_at AS createdAt FROM records WHERE id = :recordId")
     suspend fun recordText(recordId: String): RecordTextRow?
 
+    /** Explore category suggestion hint: ids of the records in [categoryId]. */
+    @Query("SELECT id FROM records WHERE category_id = :categoryId")
+    suspend fun recordIdsInCategory(categoryId: String): List<String>
+
+    /** Every record (Explore semantic search candidates), oldest first. */
+    @Query("SELECT id, text, created_at AS createdAt FROM records ORDER BY created_at, id")
+    suspend fun allRecordTexts(): List<RecordTextRow>
+
     /** Candidates: records written strictly before the target (never the target itself or later records). */
     @Query("SELECT id, text, created_at AS createdAt FROM records WHERE created_at < :createdAt AND id != :excludeId ORDER BY created_at, id")
     suspend fun recordsBefore(createdAt: Long, excludeId: String): List<RecordTextRow>
