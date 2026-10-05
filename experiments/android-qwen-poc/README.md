@@ -46,6 +46,10 @@ production 앱(`app/`)과 `experiments/related/`는 건드리지 않는다. 모�
 4. 완전 로컬은 제품의 필수 가치가 아니므로, 다음 단계에서는 **local storage + local e5 + stateless inference API**를 우선 검토한다.
 5. 이 PoC는 폐기하지 않는다. 향후 완전 로컬 inference를 다시 선택할 경우의 feasibility baseline으로 보존한다.
 
+> **후속 결정 (M5-4, 2026-10-05)**: Modal Qwen3.5-4B 서버 실험(`experiments/modal-qwen-4b/`) 결과 server inference가 2B보다 나은 품질을 보이지 않아,
+> 위 3 · 4는 대체됐다. production은 **Android local inference (Room + local e5 + local Qwen3.5-2B Q4_K_M)**로 확정했고, 이 PoC 구성을 production에 통합한다.
+> 저장을 막지 않는 background 실행 · 사용자 동의 후 모델 다운로드로 위 3의 부담을 다룬다. 자세한 내용: `docs/m5-related-decision.md`.
+
 ## 산출물
 
 | 파일 | 내용 |
