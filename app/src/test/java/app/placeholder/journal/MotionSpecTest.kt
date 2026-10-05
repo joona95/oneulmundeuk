@@ -94,9 +94,10 @@ class MotionSpecTest {
 
     @Test
     fun saveFeedbackDoesNotHoldTheNormalFlow() {
-        // normal save: jelly (600ms) + a short still moment ≈ 0.9–1.0s, then navigation continues
-        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 900..1000)
-        assertTrue(SaveFeedbackTiming.REDUCED_SAVED in 700..900)
+        // normal save: jelly (600ms) + a still "저장했어요" = 1.5s, then navigation continues (back or Related Memories)
+        assertEquals(1500, SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED)
+        assertEquals(SaveFeedbackTiming.SAVED_TOTAL, SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED)
+        assertEquals(SaveFeedbackTiming.SAVED_TOTAL, SaveFeedbackTiming.REDUCED_SAVED)
         // first record: same motion, a little longer so the message can be read
         assertTrue(SaveFeedbackTiming.HOLD_FIRST > SaveFeedbackTiming.HOLD_SAVED)
         assertEquals("저장했어요", SaveFeedbackCopy.SAVED)
@@ -119,8 +120,14 @@ class MotionSpecTest {
 
     @Test
     fun saveFeedbackLengthDoesNotDependOnRelatedResults() {
-        // M6: one timing for every save — related records are analysed later in the background.
-        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 900..1000) // jelly 600 + "저장했어요" ~350
+        // M6-4: one length for every normal save, with or without related results; it equals the grace window,
+        // so results never shorten it and waiting for them never lengthens it.
+        assertEquals(SaveFeedbackTiming.SAVED_TOTAL.toLong(), app.placeholder.journal.ui.editor.RelatedGrace.WINDOW_MS)
         assertTrue(SaveFeedbackTiming.HOLD_FIRST > SaveFeedbackTiming.HOLD_SAVED) // first-record copy is read longer
+        assertEquals(1100, SaveFeedbackTiming.HOLD_FIRST) // first-record timing unchanged
+        assertEquals(1500, SaveFeedbackTiming.REDUCED_FIRST)
+        // the related navigation pause is its own policy (500 ms), added only when results were ready
+        assertEquals(500L, app.placeholder.journal.ui.components.RelatedNavTiming.RELATED_NAV_DELAY_MS)
+        assertEquals(1500, SaveFeedbackTiming.SAVED_TOTAL)
     }
 }

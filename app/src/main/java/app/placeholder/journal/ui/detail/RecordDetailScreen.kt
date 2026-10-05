@@ -34,12 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.placeholder.journal.data.model.RecordWithCategory
 import app.placeholder.journal.ui.components.AppTopBar
 import app.placeholder.journal.ui.components.CategoryTag
 import app.placeholder.journal.ui.components.EmotionMarker
+import app.placeholder.journal.ui.components.RecordCard
 import app.placeholder.journal.ui.container
 import app.placeholder.journal.ui.theme.AppTheme
 import app.placeholder.journal.ui.theme.colors
@@ -51,7 +53,11 @@ fun RecordDetailScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDeleted: () -> Unit,
-    viewModel: RecordDetailViewModel = viewModel { RecordDetailViewModel(container().repository, recordId) },
+    onOpenRecord: (String) -> Unit,
+    viewModel: RecordDetailViewModel = viewModel {
+        val c = container()
+        RecordDetailViewModel(c.repository, c.relatedRepository, recordId)
+    },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
@@ -79,7 +85,7 @@ fun RecordDetailScreen(
             )
         },
     ) { inner ->
-        (state as? DetailState.Loaded)?.let { DetailContent(it.item, Modifier.padding(inner)) }
+        (state as? DetailState.Loaded)?.let { DetailContent(it.item, it.related, onOpenRecord, Modifier.padding(inner)) }
     }
 
     if (confirmDelete) {
@@ -98,7 +104,12 @@ fun RecordDetailScreen(
 }
 
 @Composable
-private fun DetailContent(item: RecordWithCategory, modifier: Modifier = Modifier) {
+private fun DetailContent(
+    item: RecordWithCategory,
+    related: List<RecordWithCategory>,
+    onOpenRecord: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val t = AppTheme.tokens
     val record = item.record
     val surface = MaterialTheme.colorScheme.surface
@@ -142,8 +153,43 @@ private fun DetailContent(item: RecordWithCategory, modifier: Modifier = Modifie
                 "수정됨 · ${TimeFormat.cardMeta(record.updatedAt)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = t.textTertiary,
-                modifier = Modifier.padding(bottom = t.spacing.xxl),
+                modifier = Modifier.padding(bottom = if (related.isEmpty()) t.spacing.xxl else 0.dp),
+            )
+        }
+        if (related.isNotEmpty()) ContinuingRecords(related, onOpenRecord)
+    }
+}
+
+/**
+ * M6-4 "이어지는 기록": stored related results of this record, in stored order, as the usual RecordCards.
+ * Shown only when there is at least one; no AI wording, count, similarity or score. Tap → that record's Detail.
+ */
+@Composable
+private fun ContinuingRecords(related: List<RecordWithCategory>, onOpenRecord: (String) -> Unit) {
+    val t = AppTheme.tokens
+    Column(
+        verticalArrangement = Arrangement.spacedBy(t.spacing.xs),
+        modifier = Modifier.padding(bottom = t.spacing.xxl),
+    ) {
+        Text(
+            DetailCopy.CONTINUING,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = t.textPrimary,
+            modifier = Modifier.padding(bottom = t.spacing.xxs),
+        )
+        related.forEach { r ->
+            RecordCard(
+                r,
+                onClick = { onOpenRecord(r.record.id) },
+                // Records-list card size, with more of the text than a list preview so the connection can be read
+                bodyMaxLines = DetailCopy.CONTINUING_MAX_LINES,
             )
         }
     }
+}
+
+object DetailCopy {
+    const val CONTINUING = "이어지는 기록"
+    const val CONTINUING_MAX_LINES = 4
 }

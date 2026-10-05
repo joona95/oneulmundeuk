@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import app.placeholder.journal.data.RecordRepository
 import app.placeholder.journal.data.db.CategoryEntity
 import app.placeholder.journal.data.model.Emotion
+import app.placeholder.journal.related.RelatedRepository
+import app.placeholder.journal.ui.components.SaveFollowUp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,18 +27,25 @@ data class EditorState(
     val saved: Boolean = false,
     /** True when the record just created is the only one (shows the first-record save message). */
     val firstRecord: Boolean = false,
+    /** The record just created (new records only) — Related Memories opens with this id. */
+    val savedRecordId: String? = null,
+    /** Whether the save feedback ends in Related Memories instead of going back (decided within [RelatedGrace.WINDOW_MS]). */
+    val followUp: SaveFollowUp = SaveFollowUp.None,
 ) {
     val canSave: Boolean get() = loaded && !saving && !saved && text.isNotBlank() // !saved: no double save during the feedback
 }
 
 /**
  * Create when [recordId] is null, edit otherwise. Emotion and category are optional.
- * Saving never waits for related-record analysis: the repository notifies its RecordChangeListener after the write
- * and the save feedback always ends the same way (M6). The first record only changes the feedback copy.
+ * Saving never waits for related-record analysis: `saved` is set as soon as the write commits. Only afterwards, for a
+ * new (not first) record, its stored related results are watched for the short grace window ([relatedWithin]); the
+ * feedback then ends in Related Memories only if they are ready in time. The first record only changes the copy.
  */
 class RecordEditorViewModel(
     private val repository: RecordRepository,
+    private val related: RelatedRepository,
     private val recordId: String?,
+    private val graceWindowMs: Long = RelatedGrace.WINDOW_MS,
 ) : ViewModel() {
     val isEditing: Boolean = recordId != null
 
@@ -68,14 +77,20 @@ class RecordEditorViewModel(
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
             var first = false
+            var newId: String? = null
             if (recordId == null) {
-                repository.create(s.text, s.emotion, s.categoryId)
+                newId = repository.create(s.text, s.emotion, s.categoryId)
                 // Read after the write has committed; the save itself is never delayed by the feedback UI.
                 first = repository.observeRecords().first().size == 1
             } else {
                 repository.update(recordId, s.text, s.emotion, s.categoryId)
             }
-            _state.update { it.copy(saving = false, saved = true, firstRecord = first) }
+            val followUp = followUpAfterSave(isNewRecord = newId != null, firstRecord = first)
+            _state.update { it.copy(saving = false, saved = true, firstRecord = first, savedRecordId = newId, followUp = followUp) }
+            if (followUp == SaveFollowUp.Waiting && newId != null) {
+                val decided = relatedWithin(related.observeRelated(newId), graceWindowMs)
+                _state.update { it.copy(followUp = decided) }
+            }
         }
     }
 }

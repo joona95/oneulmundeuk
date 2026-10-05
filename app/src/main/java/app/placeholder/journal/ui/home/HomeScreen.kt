@@ -107,10 +107,9 @@ fun HomeScreen(
                             item,
                             onClick = { onOpenRecord(item.record.id) },
                             modifier = Modifier.padding(top = if (index == 0) 0.dp else t.spacing.xs),
-                            // compact on Home only: 16 → 10 vertical padding, 12 → 6 meta/body gap
+                            // compact on Home only: 16 → 10 vertical padding, 12 → 6 meta/body gap; body lines = RecordCard default (3, like Records)
                             contentPadding = PaddingValues(horizontal = t.spacing.md, vertical = 10.dp),
                             contentGap = 6.dp,
-                            bodyMaxLines = 2,
                         )
                     }
                 }

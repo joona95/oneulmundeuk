@@ -13,6 +13,7 @@ import app.placeholder.journal.data.db.RelatedAnalysisEntity
 import app.placeholder.journal.data.db.RelatedJudgmentEntity
 import app.placeholder.journal.data.model.Emotion
 import app.placeholder.journal.related.RelatedInvalidator
+import app.placeholder.journal.related.RelatedRepository
 import app.placeholder.journal.related.RelatedStore
 import app.placeholder.journal.related.RelatedText
 import kotlinx.coroutines.flow.first
@@ -37,7 +38,7 @@ class RelatedPersistenceTest {
     private var enabled = true
     private lateinit var repo: RecordRepository
     private val dao get() = db.relatedDao()
-    private val store get() = RelatedStore(dao)
+    private val store get() = RelatedStore(dao, pv)
     private val pv = "pipeline-test"
 
     @Before
@@ -96,12 +97,12 @@ class RelatedPersistenceTest {
         // label 2: ids[0..5] (6 of them), label 1: ids[6] with the highest similarity
         ids.take(6).forEachIndexed { i, id -> judge(t, id, .9f - i / 100f, 2) }
         judge(t, ids[6], .99f, 1)
-        assertEquals(ids.take(5), store.resultIds(t, pv))
+        assertEquals(ids.take(5), store.resultIds(t))
 
         repo.delete(ids[1])
-        assertEquals(listOf(ids[0], ids[2], ids[3], ids[4], ids[5]), store.resultIds(t, pv)) // next label 2, never label 1
+        assertEquals(listOf(ids[0], ids[2], ids[3], ids[4], ids[5]), store.resultIds(t)) // next label 2, never label 1
         repo.delete(ids[0]); repo.delete(ids[2])
-        assertEquals(listOf(ids[3], ids[4], ids[5]), store.resultIds(t, pv)) // fewer than 5 — not padded
+        assertEquals(listOf(ids[3], ids[4], ids[5]), store.resultIds(t)) // fewer than 5 — not padded
         assertEquals(AnalysisStatus.DONE, dao.analysis(t)!!.status) // no re-analysis queued
         assertEquals(4, dao.judgmentsFor(t).size) // 3 × label 2 + the label 1 pair
     }
@@ -114,15 +115,33 @@ class RelatedPersistenceTest {
         val (a, b, c, d) = (1..4).map { repo.create("예전 $it", null, null) }
         val t = repo.create("지금", null, null)
         judge(t, a, .5f, 2); judge(t, b, .9f, 0); judge(t, c, .8f, null, JudgmentStatus.FAILED); judge(t, d, .7f, 2)
-        assertEquals(emptyList<String>(), store.resultIds(t, pv)) // no analysis row yet
+        assertEquals(emptyList<String>(), store.resultIds(t)) // no analysis row yet
 
         done(t)
-        assertEquals(listOf(d, a), store.resultIds(t, pv))
-        assertEquals(emptyList<String>(), store.resultIds(t, "other-pipeline"))
-        assertEquals(listOf(d, a), store.observeResultIds(t, pv).first())
+        assertEquals(listOf(d, a), store.resultIds(t))
+        assertEquals(emptyList<String>(), RelatedStore(dao, "other-pipeline").resultIds(t))
+        assertEquals(listOf(d, a), store.observeResultIds(t).first())
 
         dao.requeue(listOf(t), clock)
-        assertEquals(emptyList<String>(), store.resultIds(t, pv)) // only DONE analyses are shown
+        assertEquals(emptyList<String>(), store.resultIds(t)) // only DONE analyses are shown
+    }
+
+    @Test
+    fun relatedRecordsFollowStoredOrderAndHideWhenStaleOrGone() = runTest {
+        enabled = false
+        val (a, b, c) = (1..3).map { repo.create("예전 $it", null, null) }
+        val t = repo.create("지금", null, null)
+        done(t); judge(t, b, .5f, 2); judge(t, c, .8f, 2); judge(t, a, .95f, 1)
+        val related = RelatedRepository(store, db.recordDao())
+
+        val r = related.observeRelated(t).first()!!
+        assertEquals(t, r.target.record.id)
+        assertEquals(listOf(c, b), r.related.map { it.record.id }) // relevance order, records only, never label 1
+        repo.delete(c)
+        assertEquals(listOf(b), related.observeRelated(t).first()!!.related.map { it.record.id }) // the rest stays
+        assertNull(RelatedRepository(RelatedStore(dao, null), db.recordDao()).observeRelated(t).first()) // no active version
+        repo.update(t, "지금 고침", null, null) // stale + re-queued (PENDING) → hidden, nothing old shown
+        assertNull(related.observeRelated(t).first())
     }
 
     // ── invalidation ──
@@ -150,7 +169,7 @@ class RelatedPersistenceTest {
         repo.update(t, "  지금", Emotion.SAD, null)     // leading whitespace: same text version
         assertNotNull(dao.embedding(t))
         assertEquals(AnalysisStatus.DONE, dao.analysis(t)!!.status)
-        assertEquals(listOf(a), store.resultIds(t, pv))
+        assertEquals(listOf(a), store.resultIds(t))
     }
 
     @Test
@@ -167,7 +186,7 @@ class RelatedPersistenceTest {
         val row = dao.analysis(t)!!
         assertEquals(AnalysisStatus.PENDING, row.status)
         assertEquals(RelatedText.hash("지금은 달라졌다"), row.textHash)
-        assertEquals(emptyList<String>(), store.resultIds(t, pv))
+        assertEquals(emptyList<String>(), store.resultIds(t))
     }
 
     @Test
@@ -190,7 +209,7 @@ class RelatedPersistenceTest {
         assertEquals(AnalysisStatus.PENDING, dao.analysis(t1)!!.status)
         assertEquals(AnalysisStatus.PENDING, dao.analysis(t2)!!.status)
         assertEquals(AnalysisStatus.DONE, dao.analysis(t3)!!.status) // never used a
-        assertEquals(listOf(b), store.resultIds(t3, pv))
+        assertEquals(listOf(b), store.resultIds(t3))
         assertEquals(AnalysisStatus.PENDING, dao.analysis(a)!!.status) // a itself (enabled) is queued
     }
 

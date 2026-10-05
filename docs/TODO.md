@@ -36,20 +36,21 @@
     - 완료 (2026-10-05): `RelatedEntities` · `RelatedDao` · `MIGRATION_1_2` · `RelatedText` · `RelatedStore` · `RelatedInvalidator`(앱에서는 analysisEnabled=false), schema `2.json`. 검증(Mac): `./gradlew test assembleDebug assembleRelease` BUILD SUCCESSFUL · `./gradlew connectedAndroidTest` SM-S948N 16 tests 전부 PASS (RecordDaoTest · RecordChangeListenerTest · MigrationTest · RelatedPersistenceTest). 결과 노출: 분석이 PENDING · RUNNING이면 0개, DONE 후에만 다시 노출 (확정).
   - [x] M6-3 pipeline core (fake embedder · judge): `CandidateRetriever`(createdAt < 대상 · Top 30) · `selectWorthShowing` 이전 · `RelatedAnalyzer`(판정 캐시 · 재개 · 취소) · 대기열 처리 로직. 단위 테스트.
     - 완료 (2026-10-05): `TextEmbedder` · `RelatedValueJudge` · `RelatedPipeline` · `EmbeddingCodec` · `rankCandidates` · `RelatedAnalysisStorage`(+Room 구현) · `RelatedAnalyzer` (앱에는 미연결). 검증(Mac): `./gradlew test assembleDebug assembleRelease` BUILD SUCCESSFUL · `./gradlew connectedAndroidTest` SM-S948N 23 tests 전부 PASS.
-  - [ ] M6-4 UI 노출 (debug 가짜 결과로 확인): Related Memories를 저장된 결과 기반 `RelatedMemoriesRoute(recordId)`로 (라벨 `이 생각에서`), Home 카드(작성 영역 아래 · `다시 만난 생각` 위) · Record Detail `이어지는 기록`. 카드 모양 디자인 확인 후.
+  - [ ] M6-4 UI 노출 (debug 가짜 결과로 확인): 저장 직후 grace window(1.5초 = 일반 저장 피드백 길이) 안에 결과가 있으면 `저장했어요` + jelly를 1.5초 다 보여주고 0.5초 연출 pause(`RELATED_NAV_DELAY_MS`) 뒤(결과 없으면 1.5초에 바로 복귀) Related Memories로 자동 이동(overlay에 `문득` 문구 · CTA 없음; Thread B: target만 rounded card, 과거 기록은 divider로 나뉜 thread item, 라벨 `이 생각에서`, 기록 최대 12줄, `RelatedMemoriesRoute(recordId)`) · Record Detail `이어지는 기록`(최대 4줄). Home은 시간 기반 `다시 만난 생각`만(semantic 카드 제거), Home `최근 기록` 본문은 기록 목록과 같은 최대 3줄. 구현됨(미커밋) — Mac 빌드 · 테스트 · 실기기 확인 후 체크.
     - 결정 (2026-10-05): UI는 pipeline version을 모른다 — active version은 repository / store 계층이 관리하고 조회 때 내부에서 사용. debug / fake 결과도 같은 경계. Home 카드 디자인은 실제 화면을 보며 결정.
   - [ ] M6-5 기능 상태 · Settings: DataStore(enabled · 제안 상태) · 모델 상태 machine · Settings `관련된 생각 찾기` ON/OFF · `AI 모델 삭제` · 10개 제안 sheet. (다운로드는 fake)
   - [ ] M6-6 모델 다운로드 (e5 + Qwen 하나의 흐름): `ModelArtifact` · `ModelSource`(제공자 미정) · DownloadManager · sha256 검증 · 원자적 이동 · 삭제. `INTERNET` 권한과 Manifest 주석을 새 원칙으로.
   - [ ] M6-7 local Qwen: llama.cpp JNI(NDK, arm64-v8a) · judge_v1 asset(sha 검사) · JSON schema · thinking off. 앱 안에서 frozen 157쌍 → PoC 제품 지표(Bad .25 · Good@5 .64 · F7 1/4)와 비교.
   - [ ] M6-8 local e5: ONNX 변환 · tokenizer · runtime. frozen 157쌍에서 Mac e5 run과 Top 30 순위 비교.
   - [ ] M6-9 WorkManager 연결: `RelatedWorker` · 실행 조건 · 발열 · 실행 예산 · 재시도. 실제 기기에서 저장 → 결과 노출까지 end-to-end (latency · 배터리 · RSS).
+  - [ ] M6-9 늦게 끝난 결과 UX 결정: grace window 뒤 DONE을 어떻게 알릴지 (local notification / 다음 앱 진입 one-shot / 조용한 inbox · indicator). Home 상시 semantic 카드는 쓰지 않는다. 실제 모델 latency를 본 뒤 grace window 길이도 다시 확인.
     - FAILED 재시도 정책: 최대 3회 · backoff. 현재 `requeue`는 attempts를 0으로 되돌리므로 attempts를 유지하는 재대기 경로를 이때 추가 (M6-3에서 보류).
-  - [x] UI · 제품 결정 (2026-10-05): Home 카드 = 작성 영역 아래 · `다시 만난 생각` 위 · Detail 섹션 `이어지는 기록` · Related Memories 라벨 `이 생각에서` · 최초 분석 최신 10개 · 충전 조건 없음 · `나중에` 후 재제안 없음 · e5+Qwen 하나의 선택형 다운로드 · AI 결과 일괄 삭제 없음 (MVP). 남은 확인: Home 카드 모양(M6-4) · 제안 sheet 문구(M6-5).
+  - [x] UI · 제품 결정 (2026-10-05): Home 카드 = 작성 영역 아래 · `다시 만난 생각` 위 · Detail 섹션 `이어지는 기록` · Related Memories 라벨 `이 생각에서` · 최초 분석 최신 10개 · 충전 조건 없음 · `나중에` 후 재제안 없음 · e5+Qwen 하나의 선택형 다운로드 · AI 결과 일괄 삭제 없음 (MVP). 남은 확인: 제안 sheet 문구(M6-5). (Home semantic 카드는 M6-4 실기기 확인 후 폐기 — 저장 직후 노출로 변경)
   - [ ] 실제 사용자 기록이 쌓인 뒤 정책(label 2만 · Top 30 · ≤ 5) 재평가. dataset v1.1로 더 튜닝하지 않는다.
 - [ ] Explore (semantic search), reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
 - [x] Editor: compact attribute panel while the keyboard is open (M1.5: labels and the big button hide; 저장 stays in the top bar).
 - [ ] Editor: consider a one-line toolbar (emotion/category as a single row) if the compact panel still feels tight on small screens.
 - [ ] Records List: search icon (Figma) arrives with Explore.
-- [ ] Record Detail: 관련 결과 섹션 (→ M6-4) + "지금의 생각 덧붙이기" action (Figma, 미정).
+- [ ] Record Detail: 관련 결과 섹션 (M6-4 구현) + "지금의 생각 덧붙이기" action (Figma, 미정).
 - [ ] Motion polish candidates: list item fade + 4–6px rise for newly surfaced past records (Related / Home only).
 - [ ] Dark theme decision.

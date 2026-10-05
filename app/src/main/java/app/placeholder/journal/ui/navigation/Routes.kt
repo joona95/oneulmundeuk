@@ -18,15 +18,6 @@ data class RecordEditorRoute(val recordId: String? = null)
 @Serializable
 data class RecordDetailRoute(val recordId: String)
 
-/**
- * Related Memories. M4 opened it right after saving; M6-1 removed that, and M6-4 changes this route to
- * `recordId` only (results read from storage). Until then [relatedIds] keeps the given order, joined with ','.
- */
+/** Related Memories (M6-4): the target record id only; its stored results are read by the ViewModel. */
 @Serializable
-data class RelatedMemoriesRoute(val recordId: String, val relatedIds: String) {
-    val relatedIdList: List<String> get() = relatedIds.split(',').filter { it.isNotEmpty() }
-
-    companion object {
-        fun of(recordId: String, relatedIds: List<String>) = RelatedMemoriesRoute(recordId, relatedIds.joinToString(","))
-    }
-}
+data class RelatedMemoriesRoute(val recordId: String)

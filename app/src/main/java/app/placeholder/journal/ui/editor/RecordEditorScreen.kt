@@ -67,8 +67,11 @@ fun RecordEditorScreen(
     onClose: () -> Unit,
     /** After the save feedback: back to where the editor was opened (the same for every save). */
     onSaved: () -> Unit,
+    /** Save feedback ended with related results ready in the grace window → Related Memories of that record (id only). */
+    onOpenRelated: (String) -> Unit,
     viewModel: RecordEditorViewModel = viewModel {
-        RecordEditorViewModel(container().repository, recordId)
+        val c = container()
+        RecordEditorViewModel(c.repository, c.relatedRepository, recordId)
     },
 ) {
     val t = AppTheme.tokens
@@ -191,6 +194,8 @@ fun RecordEditorScreen(
                 emotion = state.emotion,
                 kind = if (state.firstRecord) SaveFeedbackKind.FirstRecord else SaveFeedbackKind.Saved,
                 onFinished = onSaved,
+                followUp = state.followUp,
+                onFinishedToRelated = { state.savedRecordId?.let(onOpenRelated) ?: onSaved() },
             )
         }
     }

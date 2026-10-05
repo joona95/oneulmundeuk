@@ -14,7 +14,7 @@ UI · 제품 결정은 아래 "확정된 UI · 제품 결정" 표가 기준이�
 
 | 항목 | 결정 |
 | --- | --- |
-| Home 의미 기반 관련 카드 위치 | 작성 영역 아래, 시간 기반 `다시 만난 생각` 위 |
+| Home 의미 기반 관련 카드 | **두지 않음** (2026-10-05 실기기 확인 후 변경). Home = 시간 기반 `다시 만난 생각`만. 의미 기반 related의 주 진입점은 저장 직후 feedback |
 | Record Detail 섹션 제목 | `이어지는 기록` |
 | Related Memories의 `방금 남긴 생각` 라벨 | `이 생각에서` |
 | 최초 활성화 시 분석 대상 | 최신 기록 10개 |
@@ -37,7 +37,8 @@ UI · 제품 결정은 아래 "확정된 UI · 제품 결정" 표가 기준이�
 | 자동 알림 · 자동 화면 이동 | 하지 않음 | 결과는 사용자가 다음에 Home · Detail을 볼 때 조용히 나타난다 |
 
 노출 위치 (새 UI라 **디자인 확인 필요**, 기존 토큰 · Design Freeze 규칙 안에서):
-- **Home**: 결과가 생긴 가장 최근 기록 1건을 "문득, 예전의 생각이 떠올랐어요" 카드로 보여주고, 탭하면 Related Memories. 사용자가 열었거나 더 새 결과가 생기면 교체. 최근 N일(기본 7일) 안의 결과만. 결과가 없으면 섹션 없음.
+- **역할 분리 (M6-4 실기기 확인 후 확정)**: Home = 시간이 지나 다시 만나는 기록(M3 `다시 만난 생각`, 날짜 규칙, semantic과 무관). semantic related = 지금 쓴 생각과 과거 생각이 이어지는 경험 → **주 진입점은 저장 직후**, 보조 진입점은 Record Detail `이어지는 기록`. Home에 semantic 카드를 상시 두지 않는다. (처음 설계의 Home 카드 · '최근 7일' · 'seen이면 교체' 규칙은 폐기. `seen_at` 컬럼은 남아 있지만 쓰지 않는다.)
+- **저장 직후**: 저장은 분석을 기다리지 않는다. 새 기록(첫 기록 · 수정 제외)만 짧은 grace window 동안 그 기록의 결과를 지켜본다. 그 안에 DONE + 결과 ≥ 1이면 `저장했어요` + jelly가 평소대로 끝난 뒤 Related Memories(`문득, / 예전의 생각이 떠올랐어요`)로 자동 이동한다. overlay 안에는 `문득` 문구 · CTA를 넣지 않는다. 아니면 평소처럼 끝난다(spinner · 분석 중 · 실패 표시 없음). (최종안, 2026-10-05 정정: 한때 overlay CTA `이어지는 생각 보기` 방식이었으나 폐기)
   위치: 작성 영역 아래, "다시 만난 생각" 위 (확정). "다시 만난 생각"은 날짜 기반이라 그대로 둔다. 카드 모양은 M6-4에서 디자인 확인.
 - **Record Detail**: 그 기록의 결과(최대 5개, 14px 마커 규칙)를 본문 아래 섹션으로. 0개 · 미분석이면 섹션 없음. 제목 `이어지는 기록` (확정)
 - Related Memories의 "방금 남긴 생각" 라벨은 며칠 뒤 열 수도 있으므로 `이 생각에서`로 바꾼다 (확정, M6-4에서 반영).
@@ -119,6 +120,18 @@ backlog (기능을 처음 켰을 때 · 버전이 바뀌었을 때): **최신 �
 - M6-4의 debug / fake 결과도 같은 경계(같은 store · 같은 active version)를 쓴다.
 - Home 카드의 구체적인 디자인은 M6-4에서 실제 화면을 보며 정한다 (위치는 확정: 작성 영역 아래, `다시 만난 생각` 위).
 - FAILED 분석의 재시도 attempts 정책(최대 3회 · attempts를 유지하는 재대기 경로)은 M6-9에서 다룬다. 이번에는 바꾸지 않는다.
+
+### M6-4 구현 메모 (저장 직후 노출 · Detail · Related Memories, debug fake)
+- **version 경계**: `RelatedStore(dao, activePipelineVersion: String?)` — active version은 store 생성 때 runtime이 넘기고 결과 조회 안에서만 쓴다. `null` = 결과 없음 (release, debug flag off). UI · ViewModel은 `RelatedRepository.observeRelated(recordId)` → `RelatedRecords(target, related: List<RecordWithCategory>)?`만 본다. pipeline version · model id · hash · label · similarity는 UI 타입에 없다 (`RelatedMemoriesTest`가 고정).
+- **Home**: M3 그대로(작성 영역 → `다시 만난 생각` → 최근 기록). 처음 M6-4 구현의 Home semantic 카드 · Home target 선택(`pickHomeTarget` · `observeHomeHighlight` · DAO `observeAllLabel2Rows`)은 실기기 확인 후 제거했다.
+- **grace window** (`ui/editor/SaveRelatedGrace.kt`, production 정책): `RelatedGrace.WINDOW_MS = SaveFeedbackTiming.SAVED_TOTAL = 1500` — 저장 커밋 직후부터 잰다. 일반 저장 feedback(jelly 600 + `저장했어요` 900 = 1500ms, Reduce Motion도 1500ms)과 정확히 같은 길이다. 결과가 일찍 준비돼도 feedback을 끝까지 보여준 뒤 이동하고, 결과가 없어도 같은 1500ms 뒤 돌아간다 — 저장 피드백 길이는 related 유무와 무관하다. 첫 기록 timing(1100ms hold, Reduce Motion 1500ms)은 그대로. (실기기 확인 후 1000 → 1500ms로 변경) overlay(`저장했어요` + jelly만)는 평소 hold가 끝날 때 결정을 본다: `Related` → 별도 연출 pause `RelatedNavTiming.RELATED_NAV_DELAY_MS = 500`(결과를 더 기다리는 시간이 아님) 뒤 editor를 닫고 `RelatedMemoriesRoute(id)`로 자동 이동(저장 후 약 2초, back · X → editor를 연 화면), `None` → 1500ms에 바로 평소 종료(추가 대기 없음), 아직 `Waiting`이면 window가 닫힐 때까지만 기다린다(window가 overlay보다 먼저 시작하므로 보통 0, 길어야 한두 프레임). 탭으로 hold를 건너뛰면 그 순간 정해진 결과대로 끝난다. 한 번 정해지면 바뀌지 않으므로 window 뒤 결과는 저장 흐름을 바꾸지 않는다.
+- **Related Memories (Thread B)**: X → headline `문득, / 예전의 생각이 떠올랐어요` → `이 생각에서` + 저장한 기록만 rounded card(`지금 · 시간`) → 과거 기록은 카드 없이 배경 위 thread item(`MemoryEntry`: 위 hairline divider, marker · 상대 시간 · 날짜 · 카테고리, 본문), 저장된 relevance 순서. `RelatedMemoriesRoute(recordId)`만, VM이 repository를 구독. 기록은 미리보기처럼 자르지 않고 최대 12줄(`RelatedMemoriesLayout.MAX_LINES`) — 짧은 기록은 전문. 결과 0 · stale · PENDING · RUNNING · target 삭제 → `gone` → 화면이 스스로 닫힌다(`popBackStack<RelatedMemoriesRoute>(inclusive = true)`). 빈 화면 · 안내 문구 없음.
+- **Detail `이어지는 기록`**: 결과 있을 때만(제목 포함), Records 목록 크기 RecordCard · 최대 4줄, 탭 → 그 기록의 Detail.
+- **runtime 경계**: `RelatedRuntime`(main) — `activePipelineVersion` · `analysisEnabled` · `start()` · `onRecordsChanged()`. `createRelatedRuntime`은 build type별: `src/release` = `NoRelatedRuntime`(아무것도 queue · 실행 · 노출 안 함, fake 코드 없음), `src/debug` = `DebugRelatedRuntime`. `RelatedInvalidator`에 `afterChange` hook(커밋 후 호출) 추가.
+- **debug fake** (`src/debug/.../related/DebugRelatedRuntime.kt`, 이 파일 + debug factory만 지우면 제거됨): 앱 시작 때 `files/debug_related_on`가 있으면 ON. ON이면 최신 10개 기록을 queue(최신 먼저) → 실제 `RelatedAnalyzer` + `RoomRelatedAnalysisStorage`로 drain → `RelatedStore`. 모델만 fake: embedder = 글자 bigram hash 64차원, judge = 두 text hash로 정해지는 label(약 50% / 20% / 30%). 새 기록 · 수정은 invalidator가 queue → drain. OFF(파일 삭제 + 재시작)면 active version이 null이라 저장된 fake 결과도 안 보인다.
+  - **fake latency는 debug 전용 knob**이고 grace window(production 정책)와 별개다: 빈 flag 파일 = fast UI-test mode(쌍마다 5ms + 각 분석에서 처음 판정하는 후보, 즉 가장 유사한 미판정 후보는 항상 label 2 → 이전 기록이 있으면 저장 직후 `문득` UX가 확실히 나옴), 파일 내용에 `slow` = 쌍마다 350ms + 기존 fake label만(window miss → 나중에 Detail에서 확인 · PENDING/RUNNING 확인용). top-1 규칙은 fake judge의 답을 바꾸므로 modelId에 포함(`debug-fake-pairhash-top2`) — fast/slow는 서로 다른 fake pipeline version이라 모드를 바꾸면 시작 때 최신 10개를 다시 분석하고 다른 모드 결과는 숨겨진다. 지연은 modelId에 들어가지 않는다. 실제 pipeline 정책(label 2만 · ≤5 · 채우지 않음)과 release는 그대로.
+  - 켜기(fast): `adb shell run-as app.placeholder.journal touch files/debug_related_on && adb shell am force-stop app.placeholder.journal` 후 앱 실행. slow: `adb shell "run-as app.placeholder.journal sh -c 'echo slow > files/debug_related_on'"` + force-stop. 끄기: `adb shell run-as app.placeholder.journal rm files/debug_related_on` + force-stop.
+- **M6-9로 미룸 — 늦게 끝난 결과(late result)**: grace window 뒤에 DONE이 된 결과를 사용자에게 어떻게 다시 알려줄지는 정하지 않았다. 후보: local notification / 다음 앱 진입 때 한 번만 보여주기(one-shot) / 다른 조용한 표시(inbox · indicator). Home 상시 semantic 카드는 쓰지 않는다. 그 전까지 늦은 결과는 Detail `이어지는 기록`에서만 보인다.
 
 ## 4. background inference lifecycle
 

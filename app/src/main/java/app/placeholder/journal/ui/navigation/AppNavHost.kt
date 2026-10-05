@@ -28,8 +28,9 @@ import app.placeholder.journal.ui.related.RelatedMemoriesScreen
  * Two top-level tabs (홈 · 기록) with a bottom bar; Editor and Detail are full screens above them.
  * Home → Editor(new) → save → back to Home
  * Home / Records → Detail → Editor(edit) → save → back to Detail → delete → back to the tab
- * Saving always ends the same way (back to where the editor was opened). Related Memories has no entry point
- * until M6-4 (opened from Home with stored background results); its destination stays registered.
+ * Saving always ends the same way (back to where the editor was opened).
+ * Save → "저장했어요" + jelly → (related results ready within the grace window) editor closes → Related Memories(target id)
+ * → past record → Detail. Detail "이어지는 기록" → that record's Detail. Home is time-based only (no related entry).
  */
 @Composable
 fun AppNavHost() {
@@ -75,14 +76,20 @@ fun AppNavHost() {
                     // Runs after the save-success jelly: always back to where the user came from (Home, Records or
                     // Detail). Related records are analysed later in the background (M6), never on this path.
                     onSaved = { nav.popBackStack() },
+                    // Related results were ready within the save grace window: the editor closes first, then Related
+                    // Memories opens, so back / X returns to where the editor was opened.
+                    onOpenRelated = { id ->
+                        nav.popBackStack()
+                        nav.navigate(RelatedMemoriesRoute(id))
+                    },
                 )
             }
             composable<RelatedMemoriesRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<RelatedMemoriesRoute>()
                 RelatedMemoriesScreen(
                     recordId = route.recordId,
-                    relatedIds = route.relatedIdList,
-                    onClose = { nav.popBackStack() },
+                    // Also called when the results disappear; popping by route never pops past this screen twice.
+                    onClose = { nav.popBackStack<RelatedMemoriesRoute>(inclusive = true) },
                     onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
                 )
             }
@@ -94,6 +101,7 @@ fun AppNavHost() {
                     onEdit = { nav.navigate(RecordEditorRoute(route.recordId)) },
                     // Back to where the record was opened from (Home, Records or Related Memories).
                     onDeleted = { nav.popBackStack<RecordDetailRoute>(inclusive = true) },
+                    onOpenRecord = { id -> nav.navigate(RecordDetailRoute(id)) },
                 )
             }
         }

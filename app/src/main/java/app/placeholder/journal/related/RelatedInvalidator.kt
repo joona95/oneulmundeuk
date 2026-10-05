@@ -17,13 +17,15 @@ import app.placeholder.journal.data.db.RelatedAnalysisEntity
  * - delete: FK CASCADE removes its embedding, analysis and every judgment it is part of. Other records keep the
  *   remaining label 2; no re-analysis is queued to refill the gap.
  *
- * M6-2: the app wires `analysisEnabled = { false }` (the AI feature does not exist yet), and nothing consumes the
- * queue, so no inference can run.
+ * The app wires [analysisEnabled] / [afterChange] from its `RelatedRuntime`: release = off (no model yet, nothing
+ * queued, nothing runs); debug = the fake runtime behind a flag file (M6-4).
  */
 class RelatedInvalidator(
     private val db: AppDatabase,
     private val analysisEnabled: () -> Boolean,
     private val now: () -> Long = System::currentTimeMillis,
+    /** Called after each committed change (outside the transaction), e.g. to let a runtime drain the queue. */
+    private val afterChange: () -> Unit = {},
 ) : RecordChangeListener {
     private val dao get() = db.relatedDao()
 
@@ -33,6 +35,7 @@ class RelatedInvalidator(
             val record = db.recordDao().get(recordId) ?: return@withTransaction
             enqueue(recordId, RelatedText.hash(record.text))
         }
+        afterChange()
     }
 
     override suspend fun onRecordUpdated(recordId: String, textChanged: Boolean) {
@@ -51,6 +54,7 @@ class RelatedInvalidator(
             if (previous?.textHash != hash && (previous != null || analysisEnabled())) enqueue(recordId, hash)
             if (affected.isNotEmpty()) dao.requeue(affected, now())
         }
+        afterChange()
     }
 
     override suspend fun onRecordDeleted(recordId: String) {

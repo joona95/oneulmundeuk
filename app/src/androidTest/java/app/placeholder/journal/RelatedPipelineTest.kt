@@ -58,7 +58,7 @@ class RelatedPipelineTest {
     private val embedder = Embedder()
     private val judge = Judge()
     private lateinit var analyzer: RelatedAnalyzer
-    private val store get() = RelatedStore(db.relatedDao())
+    private val store get() = RelatedStore(db.relatedDao(), pv)
     private val pv get() = analyzer.pipelineVersion
 
     @Before
@@ -91,12 +91,12 @@ class RelatedPipelineTest {
         drain()
         val t = repo.create("지금", null, null)
         assertEquals(AnalysisStatus.PENDING, status(t))
-        assertEquals(emptyList<String>(), store.resultIds(t, pv)) // PENDING → nothing shown
+        assertEquals(emptyList<String>(), store.resultIds(t)) // PENDING → nothing shown
         val out = drain().last() as AnalysisOutcome.Done
         assertEquals(listOf(a, c), out.resultIds)
         assertEquals(AnalysisStatus.DONE, status(t))
-        assertEquals(listOf(a, c), store.resultIds(t, pv)) // store agrees with the run
-        assertTrue(b !in store.resultIds(t, pv))
+        assertEquals(listOf(a, c), store.resultIds(t)) // store agrees with the run
+        assertTrue(b !in store.resultIds(t))
     }
 
     @Test
@@ -105,10 +105,10 @@ class RelatedPipelineTest {
         drain()
         val t = repo.create("지금", null, null)
         var seenWhileRunning: List<String>? = null
-        judge.during = { seenWhileRunning = store.resultIds(t, pv); judge.during = {} }
+        judge.during = { seenWhileRunning = store.resultIds(t); judge.during = {} }
         drain()
         assertEquals(emptyList<String>(), seenWhileRunning)
-        assertEquals(1, store.resultIds(t, pv).size)
+        assertEquals(1, store.resultIds(t).size)
     }
 
     @Test
@@ -120,11 +120,11 @@ class RelatedPipelineTest {
 
         repo.update(t, "지금 고쳐 씀", null, null)
         assertEquals(AnalysisStatus.PENDING, status(t))
-        assertEquals(emptyList<String>(), store.resultIds(t, pv))
+        assertEquals(emptyList<String>(), store.resultIds(t))
         drain()
         assertEquals(listOf("지금 고쳐 씀"), embedder.calls) // candidates' embeddings reused
         assertEquals(4, judge.calls.size)                    // every pair has a new target text
-        assertEquals(ids, store.resultIds(t, pv))
+        assertEquals(ids, store.resultIds(t))
     }
 
     @Test
@@ -137,10 +137,10 @@ class RelatedPipelineTest {
 
         repo.update(a, "예전 a 고침 s=0.9 l=1", null, null)
         assertEquals(AnalysisStatus.PENDING, status(t))
-        assertEquals(emptyList<String>(), store.resultIds(t, pv)) // stale → hidden until the new DONE
+        assertEquals(emptyList<String>(), store.resultIds(t)) // stale → hidden until the new DONE
         drain()
         assertTrue(judge.calls.all { it.startsWith("예전 a 고침") }) // (t, b) reused
-        assertEquals(listOf(b), store.resultIds(t, pv))
+        assertEquals(listOf(b), store.resultIds(t))
     }
 
     @Test
@@ -151,7 +151,7 @@ class RelatedPipelineTest {
         repo.update(t, "  지금", null, null) // normalization: same version
         assertEquals(AnalysisStatus.DONE, status(t))
         assertEquals(emptyList<AnalysisOutcome>(), drain())
-        assertEquals(1, store.resultIds(t, pv).size)
+        assertEquals(1, store.resultIds(t).size)
     }
 
     @Test
@@ -159,9 +159,9 @@ class RelatedPipelineTest {
         val ids = (1..7).map { repo.create("예전 $it s=0.${9 - it}5 l=2", null, null) }
         val t = repo.create("지금", null, null)
         drain()
-        assertEquals(ids.take(5), store.resultIds(t, pv))
+        assertEquals(ids.take(5), store.resultIds(t))
         repo.delete(ids[0]); repo.delete(ids[1]); repo.delete(ids[2])
-        assertEquals(ids.drop(3), store.resultIds(t, pv)) // 4 left, not refilled
+        assertEquals(ids.drop(3), store.resultIds(t)) // 4 left, not refilled
         assertEquals(AnalysisStatus.DONE, status(t))
         assertEquals(emptyList<AnalysisOutcome>(), drain())
     }
@@ -180,6 +180,6 @@ class RelatedPipelineTest {
         db.relatedDao().requeue(listOf(t), clock++) // M6-9 retry
         drain()
         assertEquals(2, judge.calls.size)
-        assertEquals(3, store.resultIds(t, pv).size)
+        assertEquals(3, store.resultIds(t).size)
     }
 }

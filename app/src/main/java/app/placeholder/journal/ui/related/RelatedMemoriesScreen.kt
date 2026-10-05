@@ -57,7 +57,15 @@ import app.placeholder.journal.util.TimeFormat
 
 object RelatedMemoriesCopy {
     const val TITLE = "문득,\n예전의 생각이 떠올랐어요"
-    const val NOW_LABEL = "방금 남긴 생각"
+    const val FROM_LABEL = "이 생각에서"
+}
+
+/**
+ * This screen is for reading how the thoughts connect, so records are NOT cut to the 2-line list preview:
+ * short ones show in full, long ones up to [MAX_LINES] lines (enough to follow, without one record taking the screen).
+ */
+object RelatedMemoriesLayout {
+    const val MAX_LINES = 12
 }
 
 /** One quiet enter for the whole content (no stagger, no per-item motion). */
@@ -70,24 +78,27 @@ object RelatedMemoriesMotion {
 }
 
 /**
- * "문득, 그때" — Related Memories right after saving (Design Freeze: Thread B v3).
- * Close (X) → headline → 방금 남긴 생각 (the plain record card, no action) → past records as Memory Entries
- * in the finder's order. No subtitle, no count / rank / score, no AI explanation, no "비슷한".
- * M4: no bottom buttons (홈으로 / 이어서 생각 남기기 wait for the relation model); X or back closes.
+ * "문득, 그때" — Related Memories (Design Freeze: Thread B v3). Opened right after "저장했어요" when the new record's
+ * related results were ready within the grace window (M6-4), with the target id only.
+ * Close (X) → headline "문득, / 예전의 생각이 떠올랐어요" → 이 생각에서 + the saved record as the ONLY rounded card
+ * (no action) → past records as [MemoryEntry] thread items directly on the background (hairline divider above each,
+ * marker · 상대 시간 · 날짜 · 카테고리, then the text), in the stored relevance order. No RecordCard preview for them,
+ * no subtitle, no count / rank / score, no AI explanation, no "비슷한". X or back closes.
+ * Nothing to show (0 / stale / PENDING / RUNNING / target deleted) → the screen closes itself (simplest safe exit).
  */
 @Composable
 fun RelatedMemoriesScreen(
     recordId: String,
-    relatedIds: List<String>,
     onClose: () -> Unit,
     onOpenRecord: (String) -> Unit,
     viewModel: RelatedMemoriesViewModel = viewModel {
-        RelatedMemoriesViewModel(container().repository, recordId, relatedIds)
+        RelatedMemoriesViewModel(container().relatedRepository, recordId)
     },
 ) {
     val t = AppTheme.tokens
     val state by viewModel.state.collectAsStateWithLifecycle()
     val reduce = rememberReduceMotion()
+    LaunchedEffect(state.gone) { if (state.gone) onClose() }
     // Plays once on entry; coming back from a past record's Detail shows the content as it was.
     var entered by rememberSaveable { mutableStateOf(false) }
     val enter = remember { Animatable(if (entered) 1f else 0f) }
@@ -109,7 +120,7 @@ fun RelatedMemoriesScreen(
             )
         },
     ) { inner ->
-        if (state.loading) return@Scaffold // keep the calm background for the first frame
+        if (state.loading || state.gone) return@Scaffold // keep the calm background for the first frame
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -137,19 +148,20 @@ fun RelatedMemoriesScreen(
                 item(key = "now-${current.record.id}") {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(t.spacing.xs),
-                        // headline + 방금 남긴 생각 read as one group (xl = 24dp); the wider gap is below it
+                        // headline + 이 생각에서 read as one group (xl = 24dp); the wider gap is below it
                         modifier = Modifier.padding(top = t.spacing.xl),
                     ) {
                         Text(
-                            text = RelatedMemoriesCopy.NOW_LABEL,
+                            text = RelatedMemoriesCopy.FROM_LABEL,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = t.textTertiary,
                         )
                         RecordCard(
                             item = current,
-                            onClick = null, // M4: the card just shows what was saved
-                            metaText = "지금 · ${TimeFormat.time(current.record.createdAt)}",
+                            onClick = null, // the card just shows the thought the past records continue from
+                            bodyMaxLines = RelatedMemoriesLayout.MAX_LINES,
+                            metaText = "지금 · ${TimeFormat.time(current.record.createdAt)}", // only reached right after saving it
                         )
                     }
                 }
@@ -208,7 +220,7 @@ private fun MemoryEntry(item: RecordWithCategory, onClick: () -> Unit, modifier:
             text = record.text,
             style = memoryStyle,
             color = t.textPrimary,
-            maxLines = 8,
+            maxLines = RelatedMemoriesLayout.MAX_LINES,
             overflow = TextOverflow.Ellipsis,
         )
     }

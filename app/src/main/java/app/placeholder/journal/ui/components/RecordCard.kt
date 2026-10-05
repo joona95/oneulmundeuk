@@ -61,7 +61,7 @@ fun RecordCard(
         }
     }
     if (onClick == null) {
-        // Display only (e.g. "방금 남긴 생각" on Related Memories): same card, no press feedback.
+        // Display only (e.g. "이 생각에서" on Related Memories): same card, no press feedback.
         Surface(
             shape = t.radii.card,
             color = MaterialTheme.colorScheme.surface,
