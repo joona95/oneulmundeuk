@@ -3,7 +3,7 @@ package app.placeholder.journal.related
 import kotlin.math.sqrt
 
 /**
- * Pure rules of the M5 policy kept for the M6 pipeline (moved out of the M5 draft finder; wired in M6-3):
+ * Pure rules of the M5 policy used by the M6 pipeline (`RelatedAnalyzer`):
  *   e5 Top [CANDIDATE_LIMIT] → judge_v1 label per candidate → label 2 only → e5 similarity DESC → at most [MAX_RESULTS].
  * No runtime, storage or Android dependency here.
  */
@@ -36,6 +36,19 @@ fun selectWorthShowing(judged: List<Pair<RelatedCandidate, Int?>>, limit: Int = 
         .take(limit)
         .map { it.recordId }
         .toList()
+
+/**
+ * e5 candidate step: cosine to the target, similarity DESC, ties by record id, at most [limit].
+ * The caller passes only records written before the target (never the target itself or later records).
+ */
+fun rankCandidates(
+    target: FloatArray,
+    candidates: List<Pair<String, FloatArray>>,
+    limit: Int = RelatedPolicy.CANDIDATE_LIMIT,
+): List<RelatedCandidate> =
+    candidates.map { (id, vector) -> RelatedCandidate(id, cosine(target, vector)) }
+        .sortedWith(compareByDescending<RelatedCandidate> { it.similarity }.thenBy { it.recordId })
+        .take(limit)
 
 /** Cosine similarity; 0 for a zero vector. */
 fun cosine(a: FloatArray, b: FloatArray): Float {

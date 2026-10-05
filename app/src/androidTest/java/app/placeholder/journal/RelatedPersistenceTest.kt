@@ -213,15 +213,20 @@ class RelatedPersistenceTest {
         enabled = true
         val first = repo.create("하나", null, null)
         val second = repo.create("둘", null, null)
+        val h1 = hash(first)
         assertEquals(first, dao.nextPending()!!.recordId)
-        dao.markRunning(first, pv, clock++)
+        assertEquals(1, dao.markRunning(first, pv, h1, clock++))
+        assertEquals(0, dao.markRunning(first, pv, h1, clock++)) // already running
         assertEquals(second, dao.nextPending()!!.recordId)
         assertEquals(1, dao.resetRunningToPending(clock++)) // process died while RUNNING
         assertEquals(first, dao.nextPending()!!.recordId)   // original queue position kept
-        dao.markRunning(first, pv, clock++)
-        dao.markDone(first, clock++)
+        dao.markRunning(first, pv, h1, clock++)
+        assertEquals(0, dao.markDone(first, pv, "other text", clock++)) // stale run cannot finish
+        assertEquals(1, dao.markDone(first, pv, h1, clock++))
         assertNotNull(dao.analysis(first)!!.completedAt)
-        dao.markFailed(second, "model load failed", clock++)
+        assertEquals(0, dao.markFailed(second, "not running", clock++)) // PENDING stays PENDING
+        dao.markRunning(second, pv, hash(second), clock++)
+        assertEquals(1, dao.markFailed(second, "model load failed", clock++))
         assertEquals(1, dao.analysis(second)!!.attempts)
         assertNull(dao.nextPending())
         val queuedAt = dao.analysis(second)!!.queuedAt

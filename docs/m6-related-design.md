@@ -1,6 +1,6 @@
 # M6-0 설계: 관련된 생각 찾기 (local semantic pipeline)
 
-상태: **설계 승인 (2026-10-05) · M6-1 완료 (저장 흐름 분리; unit test · debug/release build 통과, instrumentation test 미실행) · M6-2 완료 (schema v2 · 무효화; unit test · debug/release build · instrumentation 16개 통과, SM-S948N).** source of truth: `docs/m5-related-decision.md`의 "Production 결정 (M5-4)".
+상태: **설계 승인 (2026-10-05) · M6-1 완료 (저장 흐름 분리; unit test · debug/release build 통과, instrumentation test 미실행) · M6-2 완료 (schema v2 · 무효화; unit test · debug/release build · instrumentation 16개 통과, SM-S948N) · M6-3 완료 (fake model pipeline; unit test · debug/release build · instrumentation 23개 통과, SM-S948N).** source of truth: `docs/m5-related-decision.md`의 "Production 결정 (M5-4)".
 
 ```
 Room + local e5 + local Qwen3.5-2B Q4_K_M
@@ -101,6 +101,24 @@ Room (Migration 1 → 2, 모두 `records.id` FK **ON DELETE CASCADE**):
 - migration: `MIGRATION_1_2`는 테이블 3개 · index 2개 생성만 하고 기존 테이블은 건드리지 않는다. destructive fallback 없음. schema JSON: `app/schemas/.../1.json` 유지, `2.json`(Room 생성, migration SQL과 일치)을 함께 커밋.
 
 backlog (기능을 처음 켰을 때 · 버전이 바뀌었을 때): **최신 기록 10개**를 최신순으로 PENDING에 넣는다. 그보다 오래된 기록은 자동 분석하지 않는다 (10개 × ≈ 100 s ≈ 17분, 그 이상은 배터리 · 발열 부담). 이후 새 기록은 하나씩. (10개 확정)
+
+### M6-3 구현 메모 (pipeline core, fake model)
+
+- 모델 경계: `TextEmbedder`(modelId · embed) · `RelatedValueJudge`(modelId · judge → `JudgeResult.Label(0..2)` | `Invalid`). prompt · prefix · JSON schema · runtime은 구현체 안에만 있다 (M6-7 · M6-8에서 교체).
+- `pipeline_version` = `RelatedPipeline.version()` = 정책 id + embedder modelId + judge modelId + text 규칙 버전. 어느 것이 바뀌어도 embedding(model id) · 판정 · 결과가 새로 계산된다.
+- embedding 직렬화: float32 little-endian BLOB + `dim` (`EmbeddingCodec`). 재사용 조건: model id · 현재 text hash · 크기가 일치.
+- `RelatedAnalyzer.analyze(recordId)` / `runNext()`(FIFO): PENDING → RUNNING(guard) → target · 이전 기록 embedding(cache) → cosine Top 30(동률은 id) → 쌍마다 판정(cache: pipeline · target hash · candidate hash 일치) → 판정 1건씩 저장 → DONE(guard: 여전히 RUNNING · 같은 pipeline · 같은 text일 때만) + 이번 실행이 쓰지 않은 쌍 정리 → `RelatedStore`.
+  후보는 `created_at < target.created_at`인 기록뿐 (같은 시각 · 자신 · 이후 기록 제외).
+- 실패 경계 (가장 단순한 안): judge의 `Invalid` 또는 0..2 밖 label → 그 쌍 FAILED로 캐시, 같은 pipeline에서 재호출 없음, 나머지 후보 계속 / 실행 중 지워진 후보는 건너뜀 / embedder · judge · 저장소의 **예외는 runtime 오류**로 보고 분석 전체 FAILED(attempts + 1), 이미 계산한 embedding · 판정은 남김 / 취소는 그대로 전파(RUNNING으로 남아 `resetRunningToPending`으로 재개) / 실행 중 target이 수정되면 DONE을 거부(Superseded)해서 새 PENDING이 이긴다.
+- FAILED 분석을 언제 다시 PENDING으로 돌릴지(최대 3회 · backoff)는 M6-9 worker 몫이다. 현재 `requeue`는 attempts를 0으로 되돌리므로, 재시도용으로는 attempts를 유지하는 별도 경로가 필요하다.
+- 앱(`AppContainer`)에는 analyzer를 연결하지 않았다 (모델 · worker 없음 → inference 없음).
+
+### M6-4 전 결정 (2026-10-05)
+
+- **pipeline version은 UI가 넘기지 않는다.** UI는 pipeline version을 모른다. 현재 active pipeline version은 repository / store 계층이 관리하고 결과 조회 때 내부에서 쓴다 (지금 `RelatedStore.resultIds(targetId, pipelineVersion)`의 인자는 M6-4에서 store 내부로 옮긴다).
+- M6-4의 debug / fake 결과도 같은 경계(같은 store · 같은 active version)를 쓴다.
+- Home 카드의 구체적인 디자인은 M6-4에서 실제 화면을 보며 정한다 (위치는 확정: 작성 영역 아래, `다시 만난 생각` 위).
+- FAILED 분석의 재시도 attempts 정책(최대 3회 · attempts를 유지하는 재대기 경로)은 M6-9에서 다룬다. 이번에는 바꾸지 않는다.
 
 ## 4. background inference lifecycle
 

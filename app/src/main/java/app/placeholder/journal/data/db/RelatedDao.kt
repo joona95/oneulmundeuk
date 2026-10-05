@@ -7,6 +7,9 @@ import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
+/** A record as the related pipeline sees it: id, text, creation time (no emotion / category / date shown to models). */
+data class RecordTextRow(val id: String, val text: String, val createdAt: Long)
+
 /** One shown-result candidate row before the text-version check (see `RelatedStore`). */
 data class RelatedResultRow(
     val candidateId: String,
@@ -67,14 +70,35 @@ interface RelatedDao {
     @Query("UPDATE related_analysis SET status = 'PENDING', updated_at = :now WHERE status = 'RUNNING'")
     suspend fun resetRunningToPending(now: Long): Int
 
-    @Query("UPDATE related_analysis SET status = 'RUNNING', pipeline_version = :pipelineVersion, updated_at = :now WHERE record_id = :recordId")
-    suspend fun markRunning(recordId: String, pipelineVersion: String, now: Long)
+    /** PENDING → RUNNING for [pipelineVersion] / [textHash]. 0 when the row is not PENDING (nothing to start). */
+    @Query(
+        """
+        UPDATE related_analysis SET status = 'RUNNING', pipeline_version = :pipelineVersion, text_hash = :textHash, updated_at = :now
+        WHERE record_id = :recordId AND status = 'PENDING'
+        """,
+    )
+    suspend fun markRunning(recordId: String, pipelineVersion: String, textHash: String, now: Long): Int
 
-    @Query("UPDATE related_analysis SET status = 'DONE', error = NULL, completed_at = :now, updated_at = :now WHERE record_id = :recordId")
-    suspend fun markDone(recordId: String, now: Long)
+    /**
+     * RUNNING → DONE, only if the run is still the current one (same pipeline and target text). 0 when the record was
+     * edited / re-queued meanwhile — its new PENDING state wins and this run's results are never shown.
+     */
+    @Query(
+        """
+        UPDATE related_analysis SET status = 'DONE', error = NULL, completed_at = :now, updated_at = :now
+        WHERE record_id = :recordId AND status = 'RUNNING' AND pipeline_version = :pipelineVersion AND text_hash = :textHash
+        """,
+    )
+    suspend fun markDone(recordId: String, pipelineVersion: String, textHash: String, now: Long): Int
 
-    @Query("UPDATE related_analysis SET status = 'FAILED', attempts = attempts + 1, error = :error, updated_at = :now WHERE record_id = :recordId")
-    suspend fun markFailed(recordId: String, error: String, now: Long)
+    /** RUNNING → FAILED (attempts + 1). A row re-queued meanwhile stays PENDING. */
+    @Query(
+        """
+        UPDATE related_analysis SET status = 'FAILED', attempts = attempts + 1, error = :error, updated_at = :now
+        WHERE record_id = :recordId AND status = 'RUNNING'
+        """,
+    )
+    suspend fun markFailed(recordId: String, error: String, now: Long): Int
 
     // ── judgment cache ──
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -93,6 +117,24 @@ interface RelatedDao {
 
     @Query("DELETE FROM related_judgment WHERE candidate_id = :candidateId AND candidate_hash != :candidateHash")
     suspend fun deleteStaleCandidateJudgments(candidateId: String, candidateHash: String)
+
+    /** Drops cached pairs of [targetId] that this finished run did not use (other pipeline / target text / not in Top 30). */
+    @Query(
+        """
+        DELETE FROM related_judgment
+        WHERE target_id = :targetId
+          AND (pipeline_version != :pipelineVersion OR target_hash != :targetHash OR candidate_id NOT IN (:keepCandidateIds))
+        """,
+    )
+    suspend fun pruneJudgments(targetId: String, pipelineVersion: String, targetHash: String, keepCandidateIds: List<String>)
+
+    // ── records as the pipeline sees them (text only) ──
+    @Query("SELECT id, text, created_at AS createdAt FROM records WHERE id = :recordId")
+    suspend fun recordText(recordId: String): RecordTextRow?
+
+    /** Candidates: records written strictly before the target (never the target itself or later records). */
+    @Query("SELECT id, text, created_at AS createdAt FROM records WHERE created_at < :createdAt AND id != :excludeId ORDER BY created_at, id")
+    suspend fun recordsBefore(createdAt: Long, excludeId: String): List<RecordTextRow>
 
     // ── results ──
     /**

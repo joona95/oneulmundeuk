@@ -25,7 +25,7 @@ app/src/main/java/app/placeholder/journal/
   JournalApplication.kt   AppContainer (database, repository, relatedFinder, resurfacer)
   MainActivity.kt
   data/        model(Emotion, RecordWithCategory) · db(Entity, Dao, AppDatabase v2, Migrations, Converters, DefaultCategories, Related*: record_embedding · related_analysis · related_judgment) · RecordRepository
-  related/     RecordChangeListener(저장 · 수정 · 삭제 커밋 후 RecordRepository가 호출) → RelatedInvalidator(text version이 바뀐 캐시만 무효화 · 분석 대기열, 앱에서는 analysisEnabled=false) · RelatedText(정규화 + hash) · RelatedStore(결과: label 2 · 현재 text · ≤5) · RelatedSelection(M5 정책 순수 로직). inference는 아직 없음 (docs/m6-related-design.md). 저장은 related 결과를 기다리지 않는다
+  related/     RecordChangeListener → RelatedInvalidator(text version이 바뀐 캐시만 무효화 · 대기열, 앱에서는 analysisEnabled=false) · RelatedAnalyzer(PENDING → embedding · Top30 · 판정 cache → DONE, 모델은 TextEmbedder · RelatedValueJudge 인터페이스 뒤, 아직 fake뿐이라 앱에 연결 안 함) · RelatedText(정규화 + hash) · RelatedStore(결과: label 2 · DONE · 현재 text · ≤5) · RelatedSelection(M5 정책 순수 로직). 저장은 related 결과를 기다리지 않는다 (docs/m6-related-design.md)
   resurface/   ResurfacedRecordSelector + DateBased… — Home "다시 만난 생각": "시간이 지나서" 다시 만나는 기록 (날짜 규칙, AI 없음)
   ui/          theme(토큰, AppFonts) · components(EmotionMarker, Motion/JellyCurve, SaveSuccess, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation(홈·기록 하단 탭) · home · related(Related Memories) · records(목록·캘린더, RecordsCalendar 순수 로직) · editor · detail
   util/        TimeFormat
@@ -37,8 +37,8 @@ docs/        design-freeze.md · TODO.md · font.md (LINE Seed Sans KR) · m5-re
 ## 명령
 
 ```bash
-./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest, TypographyTest, RecordsCalendarTest, ResurfacedRecordSelectorTest, RelatedMemoriesTest, RelatedSelectionTest, RelatedTextTest
-./gradlew connectedAndroidTest # RecordDaoTest, RecordChangeListenerTest, MigrationTest, RelatedPersistenceTest (기기/에뮬레이터)
+./gradlew test                 # EmotionConverterTest, TimeFormatTest, MotionSpecTest, TypographyTest, RecordsCalendarTest, ResurfacedRecordSelectorTest, RelatedMemoriesTest, RelatedSelectionTest, RelatedTextTest, RelatedAnalyzerTest
+./gradlew connectedAndroidTest # RecordDaoTest, RecordChangeListenerTest, MigrationTest, RelatedPersistenceTest, RelatedPipelineTest (기기/에뮬레이터)
 ./gradlew assembleDebug
 
 cd design/figma-ui-builder && npm install && npm run build && npm run typecheck && npm run validate
@@ -53,7 +53,7 @@ cd design/figma-ui-builder && npm install && npm run build && npm run typecheck 
 - M4 "문득, 그때" (완료, 실기기 UX 확인): 새 기록 저장(첫 기록·수정 제외) 직후 `RelatedRecordFinder`(limit 5)를 jelly와 동시에 실행. 결과 0개 → 기존 저장 흐름, 1~5개 → jelly 600ms + "저장했어요" 약 500ms 후 Related Memories(진입 850ms fade + 12dp rise, Reduce Motion은 짧은 fade)(Thread B v3: headline · 방금 남긴 생각 card · Memory Entry 최대 5개, finder 순서 유지, 순위/점수/AI 설명 없음, 하단 버튼 없음, X로 시작 탭 복귀, 과거 기록 → Detail → back → Related). production finder는 M5 전까지 NoOp. Detail "이어지는 기록"·관계 persistence 없음.
   → **M6-1에서 저장 직후 Related Memories 자동 이동을 제거**했다. 저장 피드백은 항상 같은 길이로 끝나고 이전 화면으로 돌아간다. Related Memories 화면은 남아 있으며 M6-4에서 Home 카드로 진입한다.
 - M5 관련 기록 찾기 실험 (CLOSED, `experiments/`, `docs/m5-related-decision.md`): 결정 = Room + local e5 + local Qwen3.5-2B Q4_K_M, e5 Top30 → judge_v1 → label 2만 → similarity DESC → ≤5.
-- 진행 중: **M6 관련된 생각 찾기** (M6-0 설계 · M6-1 · M6-2 완료, 다음 M6-3) (`docs/m6-related-design.md`, 단계는 `docs/TODO.md`). 저장 직후 Related Memories 자동 이동은 없애고, 분석은 background, 결과는 Home · Record Detail에서 노출. 모델은 기록 10개에서 제안 후 동의 시 다운로드.
+- 진행 중: **M6 관련된 생각 찾기** (M6-0 설계 · M6-1 · M6-2 · M6-3 완료, 다음 M6-4) (`docs/m6-related-design.md`, 단계는 `docs/TODO.md`). 저장 직후 Related Memories 자동 이동은 없애고, 분석은 background, 결과는 Home · Record Detail에서 노출. 모델은 기록 10개에서 제안 후 동의 시 다운로드.
 - Figma / Design Freeze 동기화는 M4 이후 Home + Save Success + Related Memories를 한 번에 한다(그 전까지 Home·Save Success는 코드가 기준).
 
 M4 이후: Explore, Settings(내 감정 조각), 알림, 사진 picker, 온디바이스 AI(임베딩), 데이터 보호(SQLCipher + Keystore, 앱 잠금 등). 자세한 내용은 `docs/TODO.md`.
