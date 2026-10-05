@@ -1,6 +1,6 @@
 # M6-0 설계: 관련된 생각 찾기 (local semantic pipeline)
 
-상태: **설계 승인 (2026-10-05) · M6-1 완료 (저장 흐름 분리; unit test · debug/release build 통과, instrumentation test 미실행).** source of truth: `docs/m5-related-decision.md`의 "Production 결정 (M5-4)".
+상태: **설계 승인 (2026-10-05) · M6-1 완료 (저장 흐름 분리; unit test · debug/release build 통과, instrumentation test 미실행) · M6-2 완료 (schema v2 · 무효화; unit test · debug/release build · instrumentation 16개 통과, SM-S948N).** source of truth: `docs/m5-related-decision.md`의 "Production 결정 (M5-4)".
 
 ```
 Room + local e5 + local Qwen3.5-2B Q4_K_M
@@ -75,7 +75,7 @@ Room (Migration 1 → 2, 모두 `records.id` FK **ON DELETE CASCADE**):
 
 - `text_hash` = 정규화한 text(trim)의 hash. **text가 바뀔 때만** 무효화한다 (감정 · 카테고리 수정은 판정 입력이 아니므로 무관).
 - `pipeline_version` = e5 model id + Qwen 모델 sha256 + prompt sha + 정책 버전. 다르면 그 embedding · 판정은 쓰지 않는다.
-- 결과 = `related_judgment`에서 target = X · status OK · label 2 · 두 hash가 현재 text와 같음 · analysis DONE → similarity DESC, id ASC, 최대 5개.
+- 결과 = `related_judgment`에서 target = X · status OK · label 2 · 두 hash가 현재 text와 같음 · analysis DONE → similarity DESC, id ASC, 최대 5개. 분석이 PENDING · RUNNING이면 0개 (확정).
 
 | 사건 | 규칙 |
 | --- | --- |
@@ -86,6 +86,19 @@ Room (Migration 1 → 2, 모두 `records.id` FK **ON DELETE CASCADE**):
 | **delete** | CASCADE로 embedding · 분석 · 그 기록이 target/candidate인 판정이 모두 삭제. 다른 기록의 결과는 남은 label 2에서 다시 파생(재분석 없음, 빈 자리를 1·0으로 채우지 않음) |
 | 모델 · prompt · 정책 버전 변경 | 기존 판정은 버전 불일치로 무시. 재분석은 아래 backlog 규칙으로 |
 | 기능 OFF / 모델 삭제 | 저장된 결과는 **그대로 보여준다** (분석만 멈춤). 결과 일괄 삭제는 MVP에서 제공하지 않는다 (확정) |
+
+### M6-2 구현 메모 (schema v2)
+
+- 열 추가 (위 "핵심 열"에 더해): `record_embedding.dim` · `related_analysis.queued_at`(FIFO 기준) · `related_analysis.completed_at`. 상태 값은 문자열 key(`PENDING` 등)로 저장.
+- PK / FK / index: `record_embedding`(PK record_id) · `related_analysis`(PK record_id, index (status, queued_at)) · `related_judgment`(PK (target_id, candidate_id), index candidate_id).
+  FK는 모두 **자식 → `records.id`, ON DELETE CASCADE** 한 방향뿐이다. 기록을 지우면 그 기록의 embedding · 분석 · 그 기록이 target 또는 candidate인 판정이 지워지고, related 테이블에서 records 쪽으로 지워지는 것은 없다. FK 강제는 `AppDatabase.ENFORCE_FOREIGN_KEYS`(PRAGMA foreign_keys = ON).
+- **text version** (`RelatedText`): NFC · 줄바꿈(CRLF/CR → LF) · 앞뒤 공백 trim만 정규화하고 `t1:` + SHA-256(hex). 대소문자 · 내부 공백 · 문장부호 · 이모지는 그대로라 바뀌면 새 버전이다. 규칙을 바꾸면 prefix를 올려 모든 캐시를 무효화한다.
+- **결과 조회**: SQL이 label 2 · status OK · analysis DONE · pipeline_version 일치 · similarity DESC를 고르고, `RelatedStore`가 target · candidate · analysis hash를 현재 text와 비교해 남은 것 중 앞에서 5개만 쓴다 (SQLite에서 현재 text의 hash를 계산할 수 없어서). 오래된 쌍은 빠질 뿐 label 1 · 0으로 대체되지 않는다.
+- **edit**: repository는 trim한 원문이 달라졌는지만 알려 주고, `RelatedInvalidator`가 hash로 다시 판단한다. 현재 hash와 다른 것만 지운다 → 정규화로 같아지는 수정(앞 공백 등)은 아무것도 바꾸지 않는다.
+- **기능이 꺼져 있을 때 edit**: 이미 분석 행이 있으면 PENDING으로 되돌리고, 없으면 새로 만들지 않는다 (꺼진 동안 backlog가 쌓이지 않게). 앱은 M6-2에서 `analysisEnabled = { false }`로 연결돼 있고 대기열을 소비하는 worker가 없으므로 inference는 실행되지 않는다.
+- **결과 노출 정책 (확정, 2026-10-05)**: target 분석이 PENDING · RUNNING이면 기존 결과를 **노출하지 않는다**. 새 분석이 DONE이 된 뒤에만 다시 노출한다.
+  stale 결과를 계속 보여주는 것보다 일시적으로 결과가 없는 상태를 택한다 (candidate 수정으로 affected target이 재분석되는 동안에도 마찬가지).
+- migration: `MIGRATION_1_2`는 테이블 3개 · index 2개 생성만 하고 기존 테이블은 건드리지 않는다. destructive fallback 없음. schema JSON: `app/schemas/.../1.json` 유지, `2.json`(Room 생성, migration SQL과 일치)을 함께 커밋.
 
 backlog (기능을 처음 켰을 때 · 버전이 바뀌었을 때): **최신 기록 10개**를 최신순으로 PENDING에 넣는다. 그보다 오래된 기록은 자동 분석하지 않는다 (10개 × ≈ 100 s ≈ 17분, 그 이상은 배터리 · 발열 부담). 이후 새 기록은 하나씩. (10개 확정)
 
