@@ -29,21 +29,23 @@
 - [x] **M5-0** 평가셋 + 지표: `experiments/related/` (15 queries · 131 pairs, label 0/1/2, `eval.py`).
 - [x] **M5** 관련 기록 찾기 실험 (CLOSED): frozen v1.1 157쌍 · e5 / judge_v1·v2 / selector / listwise / reject filter / threshold / Claude probe · Android Qwen 2B PoC · Modal Qwen 4B.
   결정: **Room + local e5 + local Qwen3.5-2B (Q4_K_M)**, e5 Top 30 → judge_v1 → label 2만 → similarity DESC → ≤ 5 (`docs/m5-related-decision.md`).
-- [ ] **M6 관련된 생각 찾기 (local inference 통합)** — 저장은 즉시, 분석은 background, 결과는 저장 후 Home / Record Detail에서 노출.
-  - [ ] M6-0 재설계: working tree의 M5 초안(`SemanticRelatedRecordFinder` · 테스트 2개 · `CLAUDE.md` 변경)을 background · 결과 저장 구조에 맞게 다시 설계. 저장 직후 M4 Related Memories 화면의 역할(유지 / 결과 도착 후 노출 / 제거)과 debug finder 처리 결정.
-  - [ ] Room Migration(1, 2): record embedding cache(모델 id · 버전 포함) + 관련 결과 table(대상 기록 · 관련 기록 · 순서 · judge 버전 · 생성 시각). 기록 수정 · 삭제 시 무효화 / 재분석.
-  - [ ] local e5: `dragonkue/multilingual-e5-small-ko-v2` ONNX 변환 + Android tokenizer · runtime 선택. 앱 포함 여부(크기)를 결정. frozen 157쌍에서 Mac e5 run과 순위 일치 확인.
-  - [ ] local Qwen: llama.cpp를 앱에 JNI로 통합(`examples/llama.android` 방식, NDK · arm64). PoC 구성 그대로(b10456 기준 · Q4_K_M · judge_v1 sha `553ab6176c0293f9` · temperature 0 · JSON schema · thinking off). frozen 157쌍을 앱 안에서 돌려 PoC 제품 지표(Bad .25 · Good@5 .64 · F7 1/4)와 비교.
-  - [ ] background 실행: 저장 후 분석 작업 예약(기록 1건 단위 · 직렬 · 취소 / 재시도 · 프로세스 종료 대비). 실행 조건(충전 중 · 유휴 · 발열 · 배터리) 결정. 모델 메모리(peak RSS 약 2.7 GB) 고려.
-  - [ ] 기능 제안 · 모델 다운로드: 기록 10개(초기값)에서 `관련된 생각 찾기` 제안 → 동의 시 약 1.3 GB 다운로드(이어받기 · sha256 검증 · 저장 공간 확인 · Wi-Fi 권장). 거절해도 기록 기능 정상, 재제안 정책 결정. 모델 호스팅 위치와 라이선스(Apache 2.0) 표기.
-  - [ ] `INTERNET` 권한: 현재 "INTERNET 없음" 원칙과 충돌 → 모델 다운로드에만 쓰는 범위로 원칙 · 문서 갱신. 기록 원문 · inference 결과는 기기 밖으로 보내지 않는다.
-  - [ ] Settings: `관련된 생각 찾기` ON/OFF(inference만 중단, 모델 유지) · `AI 모델 삭제`(별도) · 모델 상태(없음 / 다운로드 중 / 준비됨) 표시.
-  - [ ] 노출: Home · Record Detail "이어지는 기록"을 저장된 결과로 표시(0개면 섹션 없음).
+- [x] **M6-0 설계**: `docs/m6-related-design.md` — 저장 직후 Related Memories 흐름 제거(화면은 Home에서 진입) · component 경계 · 무효화 규칙 · background lifecycle · 상태 모델 · 10개 제안 · 초안 처리 · 네트워크 원칙.
+- [ ] **M6 관련된 생각 찾기 (local inference 통합)** — 저장은 즉시, 분석은 background, 결과는 저장 후 Home / Record Detail에서 노출. 단계마다 앱이 빌드 · 동작하는 상태로 끝낸다.
+  - [x] M6-1 저장 흐름 분리: 저장 직후 Related Memories 이동 · `awaitRelated` · `HOLD_RELATED` · `RelatedRecordFinder`/NoOp · debug finder 제거, `RecordRepository` → `RecordChangeListener`(no-op) 추가, M5 초안의 순수 로직은 `related/RelatedSelection.kt`로 분리, 나머지 초안 삭제. 검증(2026-10-05, Mac): `./gradlew test assembleDebug assembleRelease` 통과. `connectedAndroidTest`(RecordDaoTest · RecordChangeListenerTest)는 **미실행** — instrumentation 확인은 이후 단계에서.
+  - [ ] M6-2 Room Migration(1, 2): `record_embedding` · `related_analysis` · `related_judgment` (CASCADE) + 결과 파생 query + create/edit/delete 무효화 규칙 (DAO · 순수 로직 테스트). AI 없음.
+  - [ ] M6-3 pipeline core (fake embedder · judge): `CandidateRetriever`(createdAt < 대상 · Top 30) · `selectWorthShowing` 이전 · `RelatedAnalyzer`(판정 캐시 · 재개 · 취소) · 대기열 처리 로직. 단위 테스트.
+  - [ ] M6-4 UI 노출 (debug 가짜 결과로 확인): Related Memories를 저장된 결과 기반 `RelatedMemoriesRoute(recordId)`로 (라벨 `이 생각에서`), Home 카드(작성 영역 아래 · `다시 만난 생각` 위) · Record Detail `이어지는 기록`. 카드 모양 디자인 확인 후.
+  - [ ] M6-5 기능 상태 · Settings: DataStore(enabled · 제안 상태) · 모델 상태 machine · Settings `관련된 생각 찾기` ON/OFF · `AI 모델 삭제` · 10개 제안 sheet. (다운로드는 fake)
+  - [ ] M6-6 모델 다운로드 (e5 + Qwen 하나의 흐름): `ModelArtifact` · `ModelSource`(제공자 미정) · DownloadManager · sha256 검증 · 원자적 이동 · 삭제. `INTERNET` 권한과 Manifest 주석을 새 원칙으로.
+  - [ ] M6-7 local Qwen: llama.cpp JNI(NDK, arm64-v8a) · judge_v1 asset(sha 검사) · JSON schema · thinking off. 앱 안에서 frozen 157쌍 → PoC 제품 지표(Bad .25 · Good@5 .64 · F7 1/4)와 비교.
+  - [ ] M6-8 local e5: ONNX 변환 · tokenizer · runtime. frozen 157쌍에서 Mac e5 run과 Top 30 순위 비교.
+  - [ ] M6-9 WorkManager 연결: `RelatedWorker` · 실행 조건 · 발열 · 실행 예산 · 재시도. 실제 기기에서 저장 → 결과 노출까지 end-to-end (latency · 배터리 · RSS).
+  - [x] UI · 제품 결정 (2026-10-05): Home 카드 = 작성 영역 아래 · `다시 만난 생각` 위 · Detail 섹션 `이어지는 기록` · Related Memories 라벨 `이 생각에서` · 최초 분석 최신 10개 · 충전 조건 없음 · `나중에` 후 재제안 없음 · e5+Qwen 하나의 선택형 다운로드 · AI 결과 일괄 삭제 없음 (MVP). 남은 확인: Home 카드 모양(M6-4) · 제안 sheet 문구(M6-5).
   - [ ] 실제 사용자 기록이 쌓인 뒤 정책(label 2만 · Top 30 · ≤ 5) 재평가. dataset v1.1로 더 튜닝하지 않는다.
 - [ ] Explore (semantic search), reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
 - [x] Editor: compact attribute panel while the keyboard is open (M1.5: labels and the big button hide; 저장 stays in the top bar).
 - [ ] Editor: consider a one-line toolbar (emotion/category as a single row) if the compact panel still feels tight on small screens.
 - [ ] Records List: search icon (Figma) arrives with Explore.
-- [ ] Record Detail: "이어지는 기록" section (→ M6, 저장된 관련 결과로 표시) + "지금의 생각 덧붙이기" action (Figma, 미정).
+- [ ] Record Detail: 관련 결과 섹션 (→ M6-4) + "지금의 생각 덧붙이기" action (Figma, 미정).
 - [ ] Motion polish candidates: list item fade + 4–6px rise for newly surfaced past records (Related / Home only).
 - [ ] Dark theme decision.

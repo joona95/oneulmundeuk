@@ -2,8 +2,6 @@ package app.placeholder.journal
 
 import app.placeholder.journal.data.db.RecordEntity
 import app.placeholder.journal.data.model.RecordWithCategory
-import app.placeholder.journal.related.RelatedRecordFinder
-import app.placeholder.journal.related.relatedIdsToShow
 import app.placeholder.journal.ui.navigation.RelatedMemoriesRoute
 import app.placeholder.journal.ui.related.buildRelatedMemoriesState
 import org.junit.Assert.assertEquals
@@ -14,23 +12,6 @@ import org.junit.Test
 
 class RelatedMemoriesTest {
     private fun rec(id: String, at: Long = 0L) = RecordWithCategory(RecordEntity(id, "t-$id", at, at, null, null, null), categoryName = null)
-
-    @Test
-    fun limitIsFive() = assertEquals(5, RelatedRecordFinder.LIMIT)
-
-    @Test
-    fun keepsFinderOrderAndNeverPads() {
-        // finder order is "most related first" — never re-sorted by date
-        assertEquals(listOf("c", "a"), relatedIdsToShow("now", listOf(rec("c", 30), rec("a", 10))))
-        assertEquals(emptyList<String>(), relatedIdsToShow("now", emptyList()))
-    }
-
-    @Test
-    fun dropsSelfDuplicatesAndCapsAtFive() {
-        val found = listOf("now", "a", "a", "b", "c", "d", "e", "f").map { rec(it) }
-        assertEquals(listOf("a", "b", "c", "d", "e"), relatedIdsToShow("now", found))
-        assertEquals(listOf("a", "b"), relatedIdsToShow("now", found, limit = 2))
-    }
 
     @Test
     fun screenStateFollowsHandedOverOrder() {

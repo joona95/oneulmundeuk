@@ -51,7 +51,6 @@ object SaveFeedbackTiming {
     const val TEXT_DELAY = 120
     const val TEXT_IN = 180
     const val HOLD_SAVED = 350 // 600ms jelly + 350ms still "저장했어요" ≈ 0.95s
-    const val HOLD_RELATED = 500 // 600ms jelly + 500ms "저장했어요", then Related Memories ≈ 1.1s
     const val HOLD_FIRST = 1100
     const val REDUCED_SAVED = 800
     const val REDUCED_FIRST = 1500
@@ -65,9 +64,8 @@ object SaveFeedbackTiming {
  *
  * No emotion selected → the neutral (그냥 그래) jelly color is used as the plain mark.
  *
- * [toRelated] is asked when the jelly finishes: true → Related Memories follows, so "저장했어요" holds a little
- * longer ([SaveFeedbackTiming.HOLD_RELATED]) before moving on. It may suspend until that is known (no spinner).
- * Reduce Motion keeps its usual short static frame either way.
+ * The timing never depends on related-record analysis (M6: it runs later, in the background).
+ * Reduce Motion keeps its usual short static frame.
  */
 @Composable
 fun SaveSuccessOverlay(
@@ -75,7 +73,6 @@ fun SaveSuccessOverlay(
     kind: SaveFeedbackKind,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
-    toRelated: suspend () -> Boolean = { false },
 ) {
     val t = AppTheme.tokens
     val reduce = rememberReduceMotion()
@@ -91,7 +88,7 @@ fun SaveSuccessOverlay(
 
     LaunchedEffect(Unit) {
         if (reduce) {
-            // Reduce Motion: no squash / stretch — the jelly and the message, briefly (same with or without Related).
+            // Reduce Motion: no squash / stretch — the jelly and the message, briefly.
             delay((if (kind == SaveFeedbackKind.FirstRecord) SaveFeedbackTiming.REDUCED_FIRST else SaveFeedbackTiming.REDUCED_SAVED).toLong())
             complete()
             return@LaunchedEffect
@@ -104,11 +101,7 @@ fun SaveSuccessOverlay(
         }
         launch { sx.animateTo(1f, JellyMotion.spec(JellyCurve.saveSuccess) { it.scaleX }) }
         sy.animateTo(1f, JellyMotion.spec(JellyCurve.saveSuccess) { it.scaleY })
-        val hold = when {
-            kind == SaveFeedbackKind.FirstRecord -> SaveFeedbackTiming.HOLD_FIRST
-            toRelated() -> SaveFeedbackTiming.HOLD_RELATED
-            else -> SaveFeedbackTiming.HOLD_SAVED
-        }
+        val hold = if (kind == SaveFeedbackKind.FirstRecord) SaveFeedbackTiming.HOLD_FIRST else SaveFeedbackTiming.HOLD_SAVED
         delay(hold.toLong())
         complete()
     }

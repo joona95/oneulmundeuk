@@ -72,7 +72,7 @@ production은 그대로다: `app/`에 llama.cpp / Qwen runtime, JNI/NDK, Room mi
 - **Settings**: `관련된 생각 찾기` ON/OFF와 별도의 `AI 모델 삭제`. OFF는 inference만 멈추고 모델을 지우지 않는다.
 - **기록 원문과 inference는 모두 기기 안에 둔다.** 네트워크는 모델 파일을 받을 때만 쓴다.
 - 이번 결정으로 바뀌는 기존 전제 (다음 milestone에서 정리): 저장 직후 M4 Related Memories 흐름과의 관계, `INTERNET` 권한 없음 원칙(모델 다운로드에만 필요), embedding · 결과 저장을 위한 Room migration.
-- 구현 순서: `docs/TODO.md`의 "M6 관련된 생각 찾기".
+- 설계: `docs/m6-related-design.md` (M6-0). 구현 순서: `docs/TODO.md`의 "M6 관련된 생각 찾기".
 
 ## (참고) PoC 전 Android runtime 조사
 

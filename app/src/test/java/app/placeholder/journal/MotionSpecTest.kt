@@ -118,10 +118,9 @@ class MotionSpecTest {
     }
 
     @Test
-    fun saveWithRelatedHoldsBeforeMoving() {
-        val related = SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_RELATED
-        assertTrue(related in 1050..1150) // jelly 600 + "저장했어요" ~500, then Related Memories
-        assertTrue(SaveFeedbackTiming.HOLD_RELATED > SaveFeedbackTiming.HOLD_SAVED)
-        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 900..1000) // plain save unchanged
+    fun saveFeedbackLengthDoesNotDependOnRelatedResults() {
+        // M6: one timing for every save — related records are analysed later in the background.
+        assertTrue(SaveFeedbackTiming.MOTION + SaveFeedbackTiming.HOLD_SAVED in 900..1000) // jelly 600 + "저장했어요" ~350
+        assertTrue(SaveFeedbackTiming.HOLD_FIRST > SaveFeedbackTiming.HOLD_SAVED) // first-record copy is read longer
     }
 }

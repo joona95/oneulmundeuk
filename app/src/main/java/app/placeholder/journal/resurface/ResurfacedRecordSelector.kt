@@ -9,7 +9,7 @@ import kotlin.math.abs
 
 /**
  * Home "다시 만난 생각": brings back ONE past record because time has passed — not because it is similar.
- * (Meaning-based connection after saving is a different job: see `related/RelatedRecordFinder`.)
+ * (Meaning-based connection is a different job: background related-record analysis, docs/m6-related-design.md.)
  * Implementations must be deterministic for the same input (no Random) and must not throw.
  */
 interface ResurfacedRecordSelector {

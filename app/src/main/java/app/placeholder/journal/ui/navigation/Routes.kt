@@ -19,8 +19,8 @@ data class RecordEditorRoute(val recordId: String? = null)
 data class RecordDetailRoute(val recordId: String)
 
 /**
- * Related Memories (M4), right after saving a new record. [relatedIds] keeps the finder's order (most related
- * first, ≤ 5), joined with ',' so the route only carries plain strings (record ids are UUIDs).
+ * Related Memories. M4 opened it right after saving; M6-1 removed that, and M6-4 changes this route to
+ * `recordId` only (results read from storage). Until then [relatedIds] keeps the given order, joined with ','.
  */
 @Serializable
 data class RelatedMemoriesRoute(val recordId: String, val relatedIds: String) {

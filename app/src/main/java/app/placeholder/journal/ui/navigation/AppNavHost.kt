@@ -28,8 +28,8 @@ import app.placeholder.journal.ui.related.RelatedMemoriesScreen
  * Two top-level tabs (홈 · 기록) with a bottom bar; Editor and Detail are full screens above them.
  * Home → Editor(new) → save → back to Home
  * Home / Records → Detail → Editor(edit) → save → back to Detail → delete → back to the tab
- * M4: Home / Records → Editor(new) → save, related found → Related Memories (the editor is replaced) →
- *     past record → Detail → back → Related Memories → X / back → the tab it started from
+ * Saving always ends the same way (back to where the editor was opened). Related Memories has no entry point
+ * until M6-4 (opened from Home with stored background results); its destination stays registered.
  */
 @Composable
 fun AppNavHost() {
@@ -72,19 +72,9 @@ fun AppNavHost() {
                 RecordEditorScreen(
                     recordId = route.recordId,
                     onClose = { nav.popBackStack() },
-                    onSaved = { related ->
-                        // Runs after the save-success jelly. No related records (or an edit / the first record)
-                        // → back to where the user came from (Home, Records or Detail); never an empty state.
-                        // Related records → Related Memories in place of the editor, so its X / back returns to
-                        // the tab the record was written from without an extra entry on the stack.
-                        if (related == null) {
-                            nav.popBackStack()
-                        } else {
-                            nav.navigate(RelatedMemoriesRoute.of(related.recordId, related.relatedIds)) {
-                                popUpTo<RecordEditorRoute> { inclusive = true }
-                            }
-                        }
-                    },
+                    // Runs after the save-success jelly: always back to where the user came from (Home, Records or
+                    // Detail). Related records are analysed later in the background (M6), never on this path.
+                    onSaved = { nav.popBackStack() },
                 )
             }
             composable<RelatedMemoriesRoute> { backStackEntry ->
