@@ -8,3 +8,11 @@
 /captures
 .externalNativeBuild
 .cxx
+
+# Python (experiments/)
+__pycache__/
+# experiments/related venv
+experiments/related/.venv/
+# experiments/android-qwen-poc: llama.cpp 소스 · Android 빌드 · 바이너리, 모델 파일 (1GB+)
+experiments/android-qwen-poc/.build/
+*.gguf

@@ -1,0 +1,4 @@
+# M5-1 실험 전용 (Android 앱 빌드와 무관). CPU로 충분하다.
+sentence-transformers>=5.1,<6
+huggingface_hub>=0.24
+numpy

@@ -26,6 +26,7 @@
 - [x] Home (M3): date · hero question · writing surface → Editor · "다시 만난 생각" (date-based: 1년/3개월/1개월 전 ±7일, ≥14일, section hidden when none) · 최근 기록 compact ×3 + 전체 보기. No brand header.
 - [ ] Home resurfacing: semantic selector behind `ResurfacedRecordSelector` (later milestone).
 - [x] **M4** Related Memories "문득, 예전의 생각이 떠올랐어요" (Thread B v3, no subtitle) — current record + up to 5 past records in finder order, after the save jelly + a ~500ms "저장했어요" hold, only when RelatedRecordFinder returns results (new, non-first records). No results: normal save flow, never an empty state. X only (홈으로 / 이어서 생각 남기기 removed until their meaning + relation persistence are decided).
+- [x] **M5-0** 평가셋 + 지표: `experiments/related/` (15 queries · 131 pairs, label 0/1/2, `eval.py`).
 - [ ] **M5** RelatedRecordFinder: synthetic dataset → embedding cosine / threshold / heuristic / optional local LLM rerank; return only results past the threshold (≤ 5).
 - [ ] RelatedRecordFinder implementations (keyword baseline → on-device embedding). Embedding table arrives as Room Migration(1, 2).
 - [ ] Explore (semantic search), reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
