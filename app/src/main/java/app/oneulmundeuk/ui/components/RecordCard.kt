@@ -23,7 +23,7 @@ import app.oneulmundeuk.util.TimeFormat
 
 /**
  * List card: tiny color marker (no label) + time + category, then the user's text as the hero.
- * [contentPadding] / [contentGap] / [bodyMaxLines] default to the Records look; Home passes a more compact size.
+ * [contentPadding] / [contentGap] / [bodyMaxLines] default to the Records look (Home recent uses the same defaults).
  * [onClick] null → display only; [metaText] replaces the time line (e.g. "지금 · 오후 8:42").
  */
 @Composable
