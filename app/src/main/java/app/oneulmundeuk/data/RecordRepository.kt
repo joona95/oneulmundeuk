@@ -9,6 +9,8 @@ import app.oneulmundeuk.related.NoOpRecordChangeListener
 import app.oneulmundeuk.related.RecordChangeListener
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import android.database.sqlite.SQLiteConstraintException
 import java.util.UUID
 
 /**
@@ -28,6 +30,19 @@ class RecordRepository(
 
     /** Every category, archived ones included (past records still use them) — pick a view with [CategoryPolicy]. */
     fun observeCategories(): Flow<List<CategoryEntity>> = db.categoryDao().observeAll()
+
+    /** 카테고리 추가: trimmed, checked by [CategoryPolicy.checkNewName]; appended after the existing ones. */
+    suspend fun addCategory(input: String): NewCategoryName {
+        val all = db.categoryDao().observeAll().first()
+        val check = CategoryPolicy.checkNewName(input, all)
+        if (check !is NewCategoryName.Ok) return check
+        return try {
+            db.categoryDao().insert(CategoryEntity(newId(), check.name, (all.maxOfOrNull { it.sortOrder } ?: -1) + 1, now()))
+            check
+        } catch (e: SQLiteConstraintException) {
+            NewCategoryName.Duplicate // added concurrently with the same name: refuse, never crash
+        }
+    }
 
     /** Category "삭제": archive only. The row and every record that uses it stay unchanged. */
     suspend fun archiveCategory(id: String) = db.categoryDao().archive(id, now())

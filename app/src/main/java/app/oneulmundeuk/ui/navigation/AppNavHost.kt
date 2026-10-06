@@ -26,9 +26,11 @@ import app.oneulmundeuk.ui.explore.SearchResultsScreen
 import app.oneulmundeuk.ui.home.HomeScreen
 import app.oneulmundeuk.ui.records.RecordListScreen
 import app.oneulmundeuk.ui.related.RelatedMemoriesScreen
+import app.oneulmundeuk.ui.settings.CategoryManageScreen
+import app.oneulmundeuk.ui.settings.SettingsScreen
 
 /**
- * Three top-level tabs (홈 · 기록 · 탐색) with a bottom bar; Editor and Detail are full screens above them.
+ * Four top-level tabs (홈 · 기록 · 탐색 · 설정) with a bottom bar; Editor, Detail and 카테고리 관리 are full screens above them.
  * Home → Editor(new) → save → back to Home
  * Home / Records → Detail → Editor(edit) → save → back to Detail → delete → back to the tab
  * Saving always ends the same way (back to where the editor was opened).
@@ -44,6 +46,7 @@ fun AppNavHost() {
         destination?.hierarchy?.any { it.hasRoute(HomeRoute::class) } == true -> TopTab.Home
         destination?.hierarchy?.any { it.hasRoute(RecordListRoute::class) } == true -> TopTab.Records
         destination?.hierarchy?.any { it.hasRoute(ExploreRoute::class) || it.hasRoute(SearchResultsRoute::class) } == true -> TopTab.Explore
+        destination?.hierarchy?.any { it.hasRoute(SettingsRoute::class) } == true -> TopTab.Settings
         else -> null // Editor / Detail / Related Memories: no bottom bar (Search Results keeps the 탐색 tab's bar, Figma)
     }
 
@@ -85,6 +88,13 @@ fun AppNavHost() {
                         nav.getBackStackEntry<RecordListRoute>().savedStateHandle[RECORDS_CATEGORY_REQUEST] = categoryId
                     },
                 )
+            }
+            composable<SettingsRoute> {
+                SettingsScreen(onOpenCategories = { nav.navigate(CategoryManageRoute) })
+            }
+            composable<CategoryManageRoute> {
+                // pop by route: a double tap on back never pops Settings too
+                CategoryManageScreen(onBack = { nav.popBackStack<CategoryManageRoute>(inclusive = true) })
             }
             composable<SearchResultsRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<SearchResultsRoute>()
@@ -149,5 +159,6 @@ private fun NavHostController.openTab(tab: TopTab) {
         TopTab.Home -> navigate(HomeRoute, options)
         TopTab.Records -> navigate(RecordListRoute, options)
         TopTab.Explore -> navigate(ExploreRoute, options)
+        TopTab.Settings -> navigate(SettingsRoute, options)
     }
 }

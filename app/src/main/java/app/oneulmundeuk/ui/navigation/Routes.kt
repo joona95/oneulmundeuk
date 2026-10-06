@@ -22,6 +22,14 @@ object ExploreRoute
 @Serializable
 data class SearchResultsRoute(val query: String, val categoryHint: String? = null)
 
+/** 설정 tab. */
+@Serializable
+object SettingsRoute
+
+/** 카테고리 관리 (from Settings): a full screen above the tabs, back returns to Settings. */
+@Serializable
+object CategoryManageRoute
+
 /** recordId == null → new record; otherwise edit that record. */
 @Serializable
 data class RecordEditorRoute(val recordId: String? = null)

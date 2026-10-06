@@ -19,8 +19,12 @@
 - [ ] Figma + Design Freeze sync after M4: Home + Save Success + Related Memories in one pass (until then the code is the reference for Home / Save Success).
 
 ## Next feature milestones
-- [x] Bottom navigation: 홈 · 기록 (M3) · 탐색 (Explore MVP). 설정 tab arrives with its screen.
-- [ ] Settings › 내 감정 조각 (2-column grid) — persist `MarkerShape` (DataStore) and provide it via `AppTokens.markerShape`.
+- [x] Bottom navigation: 홈 · 기록 (M3) · 탐색 (Explore MVP) · 설정 (Settings MVP).
+- [x] Settings MVP (검증: `clean test assembleDebug assembleRelease` PASS · 기기 수동 확인 일부 · `connectedAndroidTest` 미실행 — `SettingsTest` 등 instrumented test는 아직 실행 안 됨): 카테고리(active chip · 카테고리 관리: 추가 · 삭제=archive) · 내 감정 조각(2열, DataStore `settings.marker_shape` → `AppTokens.markerShape`, 캘린더 dot 제외) · 다시 만나기 알림 ON/OFF · 관련된 생각 ON/OFF + 상태(OFF / MODEL_NOT_DOWNLOADED / DOWNLOADING / READY)
+  - [ ] 다시 만나기 알림 실제 발송: WorkManager · 알림 권한/채널 · 시간 기반 resurfacing("다시 만난 생각" 계열, semantic AI 아님)
+  - [ ] 관련된 생각: 모델 다운로드 · 설치 여부(`relatedModelInstalled`) · DOWNLOADING/READY 연결 · 설정값으로 분석 gate(지금은 runtime 미변경) · 모델 삭제
+  - [ ] 10번째 기록 + Home 복귀 시 `관련된 생각 찾기` bottom sheet 1회
+  - [ ] 카테고리 순서 변경 · 이름 바꾸기 · restore (Figma에는 있음, MVP 제외)
 - [x] Records Calendar (M2): 목록/캘린더 전환, 월 이동, 최대 3개 emotion dot, 날짜별 기록, 카테고리 필터(목록·캘린더 공통).
 - [ ] Records: remember the last view mode / filter (DataStore) — not in M2.
 - [ ] Records: "+N" or a denser hint when a day has more than 3 records.
@@ -59,8 +63,8 @@
 - [ ] reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
 - [x] Editor: compact attribute panel while the keyboard is open (M1.5: labels and the big button hide; 저장 stays in the top bar).
 - [x] 카테고리 정책 (미커밋): 신규 설치 기본 회사 · 일상 · 취미 · 관계 · 기타, 기존 설치는 그대로. 삭제 = archive(`categories.archived_at`, Room v3 `MIGRATION_2_3`) — 새 기록 선택지에서만 제외, Edit은 현재 값 유지, Records 필터는 사용 기록이 있으면 표시, Explore/검색 변경 없음 (`CategoryPolicy`)
-  - [ ] 카테고리 관리 UI(추가 · 삭제 dialog)는 Settings 단계에서. 삭제 dialog copy는 `CategoryPolicy`에 있음, restore UI 없음
-  - [ ] 이름 unique index: archive된 이름과 같은 새 카테고리 추가 시 충돌 — 추가 UI 만들 때 정책 결정(복원 / 이름 변경)
+  - [x] 카테고리 관리 UI(추가 · 삭제 dialog) — Settings MVP
+  - [x] archive된 이름과 같은 새 카테고리: 생성하지 않고 "예전에 사용했던 카테고리 이름이에요" 안내 (restore 정책은 미정)
 - [ ] Editor: consider a one-line toolbar (emotion/category as a single row) if the compact panel still feels tight on small screens.
 - [ ] Records List: search icon (Figma) arrives with Explore.
 - [ ] Record Detail: 관련 결과 섹션 (M6-4 구현) + "지금의 생각 덧붙이기" action (Figma, 미정).

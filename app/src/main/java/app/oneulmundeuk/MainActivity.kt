@@ -9,6 +9,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.oneulmundeuk.data.settings.AppSettings
+import app.oneulmundeuk.ui.theme.AppTokens
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -28,8 +31,11 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
 
         val coldStart = savedInstanceState == null
+        val settingsStore = (application as JournalApplication).container.settingsStore
         setContent {
-            AppTheme {
+            // 내 감정 조각: the chosen shape reaches every EmotionMarker through the theme tokens.
+            val settings by settingsStore.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
+            AppTheme(tokens = AppTokens(markerShape = settings.markerShape)) {
                 // The intro plays once per cold start (not on rotation / process restore).
                 var showIntro by rememberSaveable { mutableStateOf(coldStart) }
                 Box {

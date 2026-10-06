@@ -24,9 +24,35 @@ object CategoryPolicy {
         return categories.filter { !it.isArchived || it.id in used }
     }
 
-    /** Delete confirmation copy (the category management UI itself is a later step). */
+    /** Settings / 카테고리 관리: the categories a user can still choose (and delete). */
+    fun active(categories: List<CategoryEntity>): List<CategoryEntity> = categories.filter { !it.isArchived }
+
+    /**
+     * A new category name: trimmed, not blank, not taken. The name column is unique across *all* rows, so a name an
+     * archived category still holds cannot be reused (no restore in the MVP) — it is refused, never crashes.
+     */
+    fun checkNewName(input: String, categories: List<CategoryEntity>): NewCategoryName {
+        val name = input.trim()
+        if (name.isEmpty()) return NewCategoryName.Blank
+        val same = categories.firstOrNull { it.name == name } ?: return NewCategoryName.Ok(name)
+        return if (same.isArchived) NewCategoryName.UsedBefore else NewCategoryName.Duplicate
+    }
+
+    const val NAME_DUPLICATE = "이미 있는 카테고리예요."
+    const val NAME_USED_BEFORE = "예전에 사용했던 카테고리 이름이에요. 다른 이름으로 만들어 주세요."
+
+    /** Delete confirmation copy (카테고리 관리). */
     fun deleteTitle(name: String) = "'$name' 카테고리를 삭제할까요?"
     const val DELETE_BODY = "기존 기록의 카테고리는 그대로 유지돼요.\n새 기록에서는 더 이상 선택할 수 없어요."
     const val DELETE_CANCEL = "취소"
     const val DELETE_CONFIRM = "삭제"
+}
+
+sealed interface NewCategoryName {
+    data class Ok(val name: String) : NewCategoryName
+    data object Blank : NewCategoryName
+    /** An active category already has this name. */
+    data object Duplicate : NewCategoryName
+    /** A deleted (archived) category still holds this name. */
+    data object UsedBefore : NewCategoryName
 }

@@ -24,11 +24,11 @@ DI는 수동 (`JournalApplication.container` → `AppContainer`).
 app/src/main/java/app/oneulmundeuk/
   JournalApplication.kt   AppContainer (database, repository, relatedFinder, resurfacer)
   MainActivity.kt
-  data/        model(Emotion, RecordWithCategory) · db(Entity, Dao, AppDatabase v3, Migrations, Converters, DefaultCategories, Related*: record_embedding · related_analysis · related_judgment) · RecordRepository
+  data/        model(Emotion, RecordWithCategory) · db(Entity, Dao, AppDatabase v3, Migrations, Converters, DefaultCategories, Related*: record_embedding · related_analysis · related_judgment) · draft(새 기록 draft) · settings(SettingsStore: DataStore `settings.*`) · CategoryPolicy · RecordRepository
   related/     RecordChangeListener → RelatedInvalidator(text version이 바뀐 캐시만 무효화 · 대기열) · RelatedAnalyzer(PENDING → embedding · Top30 · 판정 cache → DONE, 모델은 TextEmbedder · RelatedValueJudge 인터페이스 뒤) · RelatedText(정규화 + hash) · RelatedStore(결과: label 2 · DONE · 현재 text · ≤5, active pipeline version을 내부에서만 씀) · RelatedRepository(UI용: 기록만 노출, 저장 직후 grace window · Detail · Related Memories) · RelatedRuntime(build type별 createRelatedRuntime: release=NoRelatedRuntime, debug=src/debug DebugRelatedRuntime fake, flag 파일) · RelatedSelection(M5 정책 순수 로직).
   search/      Explore: SemanticSearch boundary · ExploreSearch(e5 only, LLM judge 없음) · ExploreQuery/TemporalParser(결정적 날짜 routing: 날짜만 → 날짜 순, 날짜+의미 → 범위 안 e5, 그 외 → e5 Top10). e5는 RelatedRuntime.textEmbedder(Related와 embedding 공유, 없으면 날짜 질문만 응답). 키워드/LIKE 대체 금지
   resurface/   ResurfacedRecordSelector + DateBased… — Home "다시 만난 생각": "시간이 지나서" 다시 만나는 기록 (날짜 규칙, AI 없음)
-  ui/          theme(토큰, AppFonts) · components(EmotionMarker, Motion/JellyCurve, SaveSuccess, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation(홈·기록·탐색 하단 탭) · home · related(Related Memories) · records(목록·캘린더, RecordsCalendar 순수 로직) · explore(Explore · Semantic Search Results, Figma 구조) · editor · detail
+  ui/          theme(토큰, AppFonts) · components(EmotionMarker, Motion/JellyCurve, SaveSuccess, EmotionPicker, CategoryChips, RecordCard, Common: AppTopBar/AppFab) · splash(SplashIntro) · navigation(홈·기록·탐색·설정 하단 탭) · home · related(Related Memories) · records(목록·캘린더, RecordsCalendar 순수 로직) · explore(Explore · Semantic Search Results, Figma 구조) · editor · detail · settings(Settings · 카테고리 관리)
   util/        TimeFormat
 design/figma-ui-builder/  Figma Plugin API 기반 UI Builder (Figma MCP 사용 안 함)
 experiments/  M5 실험 (앱 빌드와 무관): related/(frozen 평가셋 · e5 · judge) · android-qwen-poc/(기기 Qwen 2B) · modal-qwen-4b/(서버 4B)
@@ -61,5 +61,5 @@ M4 이후: Explore, Settings(내 감정 조각), 알림, 사진 picker, 온디�
 
 ## 디자인 원칙 요약
 
-"보기에는 차분하고, 만지면 말랑한 앱." Emotion = Color · Shape = 사용자 취향(내 감정 조각, 기본 동글동글) · Label = 명시적 의미 · Motion = 부드러운 촉감 피드백(idle 애니메이션 없음, Reduce Motion 존중).
+"보기에는 차분하고, 만지면 말랑한 앱." Emotion = Color · Shape = 사용자 취향(내 감정 조각, 기본 동글) · Label = 명시적 의미 · Motion = 부드러운 촉감 피드백(idle 애니메이션 없음, Reduce Motion 존중).
 전체 설계 문서(살아있는 문서): https://claude.ai/code/artifact/7a63ffb4-b841-4450-9a5a-8b9cb1ad804d

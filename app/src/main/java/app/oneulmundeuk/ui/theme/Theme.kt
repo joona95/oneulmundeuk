@@ -21,7 +21,11 @@ data class AppTokens(
     val surfaceSecondary: Color = Palette.SurfaceSecondary,
     val border: Color = Palette.Border,
     val borderStrong: Color = Palette.BorderStrong,
-    /** "내 감정 조각" — user preference later (Settings milestone). Default 동글동글. */
+    /**
+     * "내 감정 조각" — the user's one shape for every emotion marker (Settings, DataStore `settings.marker_shape`),
+     * provided from MainActivity. Default 동글. Read by [app.oneulmundeuk.ui.components.EmotionMarker] only —
+     * the Records calendar keeps plain color dots.
+     */
     val markerShape: MarkerShape = MarkerShape.Jelly,
 )
 

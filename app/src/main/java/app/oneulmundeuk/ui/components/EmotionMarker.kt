@@ -28,13 +28,25 @@ import kotlin.math.sin
  * shape and only the color changes. All shapes share one jelly treatment (slightly irregular silhouette,
  * soft edge, tiny highlight, normalized visual weight). Ported 1:1 from the Figma UI Builder (markers.ts).
  */
-enum class MarkerShape(val label: String, internal val seed: Float) {
-    Jelly("동글동글", 0.6f),
-    Heart("하트", 1.4f),
-    Star("별", 2.1f),
-    Square("네모", 0.9f),
-    Pebble("조약돌", 0.6f),
-    Diamond("마름모", 1.7f),
+enum class MarkerShape(
+    /** Stored in settings (`settings.marker_shape`) — stable, never rename. Same keys as Figma MARKER_SHAPES. */
+    val key: String,
+    val label: String,
+    internal val seed: Float,
+) {
+    Jelly("jelly", "동글", 0.6f),
+    Heart("heart", "하트", 1.4f),
+    Star("star", "별", 2.1f),
+    Square("roundSquare", "둥근 사각", 0.9f),
+    Pebble("pebble", "조약돌", 0.6f),
+    Diamond("diamond", "다이아", 1.7f);
+
+    companion object {
+        val Default = Jelly
+
+        /** Unknown / missing key (no setting yet, or written by a newer version) → [Default]. */
+        fun fromKey(key: String?): MarkerShape = entries.firstOrNull { it.key == key } ?: Default
+    }
 }
 
 /** A small jelly marker filled with the emotion's color. Pair it with the label wherever meaning matters. */

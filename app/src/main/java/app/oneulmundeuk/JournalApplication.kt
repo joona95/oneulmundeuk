@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import app.oneulmundeuk.data.draft.DataStoreDraftStore
 import app.oneulmundeuk.data.draft.DraftStore
+import app.oneulmundeuk.data.settings.SettingsStore
 import app.oneulmundeuk.data.RecordRepository
 import app.oneulmundeuk.data.db.AppDatabase
 import app.oneulmundeuk.related.RecordChangeListener
@@ -54,6 +55,8 @@ class AppContainer(app: Application) {
     val preferences: DataStore<Preferences> by lazy { PreferenceDataStoreFactory.create { app.preferencesDataStoreFile("local_prefs") } }
     /** The one in-progress new record (never in Room, so never a record anywhere in the app). */
     val recordDraftStore: DraftStore by lazy { DataStoreDraftStore(preferences) }
+    /** Settings screen values (marker shape, 다시 만나기 알림, 관련된 생각) — same file, own keys. */
+    val settingsStore: SettingsStore by lazy { SettingsStore(preferences) }
     /** Home "다시 만난 생각" (date-based for now; swappable later). */
     val resurfacer: ResurfacedRecordSelector = DateBasedResurfacedRecordSelector()
 }
