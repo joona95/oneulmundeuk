@@ -29,7 +29,7 @@ app/src/main/java/app/oneulmundeuk/
 ├─ JournalApplication.kt     AppContainer (manual DI: database, repository, relatedFinder, resurfacer)
 ├─ MainActivity.kt
 ├─ data/
-│  ├─ db/      AppDatabase (v1) · RecordEntity · CategoryEntity · RecordDao · CategoryDao · EmotionConverter · DefaultCategories
+│  ├─ db/      AppDatabase (v3) · RecordEntity · CategoryEntity · RecordDao · CategoryDao · EmotionConverter · DefaultCategories
 │  ├─ model/   Emotion (stable keys) · RecordWithCategory
 │  └─ RecordRepository.kt
 ├─ related/    RelatedRecordFinder + NoOpRelatedRecordFinder (wired in M4; real finder in M5)
@@ -50,7 +50,7 @@ There are no UseCase, Mapper or domain layers. The UI talks to `RecordRepository
 | Table | Columns |
 | --- | --- |
 | `records` | `id` (UUID), `text`, `created_at`, `updated_at` (epoch ms), `emotion` (stable key), `category_id` → categories (ON DELETE SET NULL), `photo_path` (nullable, reserved) |
-| `categories` | `id` (UUID), `name` (unique), `sort_order`, `created_at`. Seeded with 커리어 · 성장 · 개발 · 사이드 프로젝트 · 일상 · 관계 · 취미 |
+| `categories` | `id` (UUID), `name` (unique), `sort_order`, `created_at`, `archived_at` (null = active; v3). Fresh install seeds 회사 · 일상 · 취미 · 관계 · 기타 (upgrades keep their own). "삭제" = archive: hidden from new records, kept for past records / Records filter / Explore. |
 
 Emotion keys are stored explicitly and never by ordinal or enum name: `calm` 평온 · `happy` 기쁨 · `excited` 설렘 · `so_so` 그냥 그래 · `tired` 지침 · `anxious` 불안 · `sad` 속상함. Unknown keys read back as `null`.
 

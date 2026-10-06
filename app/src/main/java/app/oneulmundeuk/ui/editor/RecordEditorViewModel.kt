@@ -2,6 +2,7 @@ package app.oneulmundeuk.ui.editor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.oneulmundeuk.data.CategoryPolicy
 import app.oneulmundeuk.data.RecordRepository
 import app.oneulmundeuk.data.draft.DraftStore
 import app.oneulmundeuk.data.draft.RecordDraft
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -93,8 +95,10 @@ class RecordEditorViewModel(
     private val _state = MutableStateFlow(EditorState(loaded = recordId == null && draftStore == null))
     val state: StateFlow<EditorState> = _state.asStateFlow()
 
-    val categories: StateFlow<List<CategoryEntity>> = repository.observeCategories()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /** Chips: active categories, plus an archived one only while it is this record's current value (Edit). */
+    val categories: StateFlow<List<CategoryEntity>> =
+        combine(repository.observeCategories(), _state.map { it.categoryId }.distinctUntilChanged(), CategoryPolicy::editorOptions)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         if (recordId != null) {
@@ -120,8 +124,8 @@ class RecordEditorViewModel(
             draftClearAllowed = false
             null
         }
-        // A category deleted since the draft was written would fail the record's foreign key on save → drop it.
-        val categoryId = stored?.categoryId?.takeIf { id -> repository.observeCategories().first().any { it.id == id } }
+        // A category removed or archived ("삭제") since the draft was written is not offered for a new record → drop it.
+        val categoryId = stored?.categoryId?.takeIf { id -> CategoryPolicy.selectableForNew(repository.observeCategories().first(), id) }
         _state.update { s ->
             val untouched = s.text.isEmpty() && s.emotion == null && s.categoryId == null
             if (stored != null && untouched) s.copy(text = stored.text, emotion = stored.emotion, categoryId = categoryId, loaded = true)

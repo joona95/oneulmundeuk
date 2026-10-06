@@ -26,7 +26,11 @@ class RecordRepository(
 
     fun observeRecord(id: String): Flow<RecordWithCategory?> = db.recordDao().observe(id)
 
+    /** Every category, archived ones included (past records still use them) — pick a view with [CategoryPolicy]. */
     fun observeCategories(): Flow<List<CategoryEntity>> = db.categoryDao().observeAll()
+
+    /** Category "삭제": archive only. The row and every record that uses it stay unchanged. */
+    suspend fun archiveCategory(id: String) = db.categoryDao().archive(id, now())
 
     suspend fun getRecord(id: String): RecordEntity? = db.recordDao().get(id)
 

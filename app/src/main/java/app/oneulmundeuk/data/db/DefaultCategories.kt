@@ -3,9 +3,12 @@ package app.oneulmundeuk.data.db
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.util.UUID
 
-/** Seeded once when the database is first created. Users will be able to edit them in Settings later. */
+/**
+ * Seeded once when the database is first created (fresh install only — upgrades never re-seed or remap; an existing
+ * install keeps its own categories, e.g. the old 커리어 / 성장 / 개발 set). Users add / delete (archive) their own later.
+ */
 object DefaultCategories {
-    val names = listOf("커리어", "성장", "개발", "사이드 프로젝트", "일상", "관계", "취미")
+    val names = listOf("회사", "일상", "취미", "관계", "기타")
 
     fun seed(db: SupportSQLiteDatabase, now: Long = System.currentTimeMillis()) {
         names.forEachIndexed { index, name ->

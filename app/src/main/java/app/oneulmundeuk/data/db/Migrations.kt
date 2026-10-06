@@ -33,3 +33,13 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_related_judgment_candidate_id` ON `related_judgment` (`candidate_id`)")
     }
 }
+
+/**
+ * v2 → v3 (category archive): adds the nullable `categories.archived_at`. Every existing category stays active
+ * (NULL); no category is renamed, removed or remapped and no record is touched — old seeds (커리어, 개발, …) remain.
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `categories` ADD COLUMN `archived_at` INTEGER")
+    }
+}

@@ -2,6 +2,7 @@ package app.oneulmundeuk.ui.records
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.oneulmundeuk.data.CategoryPolicy
 import app.oneulmundeuk.data.RecordRepository
 import app.oneulmundeuk.data.db.CategoryEntity
 import app.oneulmundeuk.data.model.Emotion
@@ -73,14 +74,16 @@ class RecordListViewModel(
         repository.observeCategories(),
         selection,
     ) { records, categories, sel ->
-        // A filter pointing at a category that no longer exists falls back to 전체.
-        val categoryId = sel.categoryId?.takeIf { id -> categories.any { it.id == id } }
+        // Looking back: active categories + archived ones some record still uses ("삭제"한 '개발'도 기록이 있으면 필터 가능).
+        val filterOptions = CategoryPolicy.recordsFilterOptions(categories, records)
+        // A filter pointing at a category that is no longer offered falls back to 전체.
+        val categoryId = sel.categoryId?.takeIf { id -> filterOptions.any { it.id == id } }
         val filtered = RecordsCalendar.filterByCategory(records, categoryId)
         val byDay = RecordsCalendar.groupByDay(filtered, zone)
         RecordsUiState(
             loading = false,
             mode = sel.mode,
-            categories = categories,
+            categories = filterOptions,
             selectedCategoryId = categoryId,
             hasAnyRecord = records.isNotEmpty(),
             // List: newest day first, records newest first within a day (DAO order) — unchanged from M1.

@@ -12,4 +12,8 @@ interface CategoryDao {
 
     @Insert
     suspend fun insert(category: CategoryEntity)
+
+    /** "삭제" = archive: the row stays (records keep it); already archived → unchanged. Never a real DELETE. */
+    @Query("UPDATE categories SET archived_at = :at WHERE id = :id AND archived_at IS NULL")
+    suspend fun archive(id: String, at: Long)
 }

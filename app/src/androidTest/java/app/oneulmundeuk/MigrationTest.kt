@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.oneulmundeuk.data.db.AnalysisStatus
 import app.oneulmundeuk.data.db.AppDatabase
 import app.oneulmundeuk.data.db.MIGRATION_1_2
+import app.oneulmundeuk.data.db.MIGRATION_2_3
 import app.oneulmundeuk.data.db.RelatedAnalysisEntity
 import app.oneulmundeuk.data.model.Emotion
 import kotlinx.coroutines.flow.first
@@ -20,9 +21,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Migration(1, 2) on a real v1 database file. The v1 schema below is copied from
+ * Migrations 1 → 2 → 3 on a real v1 database file. The v1 schema below is copied from
  * app/schemas/app.oneulmundeuk.data.db.AppDatabase/1.json and written with platform SQLite (no room-testing dependency). Opening with Room
- * runs the migration and Room's own schema validation against the v2 entities — a mismatch throws.
+ * runs the migrations and Room's own schema validation against the current (v3) entities — a mismatch throws.
  */
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
@@ -47,8 +48,8 @@ class MigrationTest {
         }
     }
 
-    private fun openV2() = Room.databaseBuilder(context, AppDatabase::class.java, name)
-        .addMigrations(MIGRATION_1_2) // no fallbackToDestructiveMigration: a broken migration fails loudly
+    private fun openLatest() = Room.databaseBuilder(context, AppDatabase::class.java, name)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3) // no fallbackToDestructiveMigration: a broken migration fails loudly
         .addCallback(AppDatabase.ENFORCE_FOREIGN_KEYS)
         .allowMainThreadQueries()
         .build()
@@ -56,10 +57,10 @@ class MigrationTest {
     @Test
     fun migratesV1KeepingRecordsAndAddsEmptyRelatedTables() = runBlocking {
         createV1()
-        val db = openV2()
+        val db = openLatest()
         try {
             val sql = db.openHelper.writableDatabase // runs migrate + Room schema validation
-            assertEquals(2, sql.version)
+            assertEquals(3, sql.version)
             val records = db.recordDao().observeAll().first()
             assertEquals(listOf("r2", "r1"), records.map { it.record.id })
             assertEquals(Emotion.CALM, records[1].record.emotion)
@@ -76,11 +77,26 @@ class MigrationTest {
         }
     }
 
+    /** v3 (category archive): old categories are kept as they were — active, same name, no new seed, no remap. */
     @Test
-    fun freshV2DatabaseOpens() = runBlocking {
-        val db = openV2()
+    fun migrationKeepsExistingCategoriesActiveAndRecordsLinked() = runBlocking {
+        createV1()
+        val db = openLatest()
         try {
-            assertEquals(2, db.openHelper.writableDatabase.version)
+            val categories = db.categoryDao().observeAll().first()
+            assertEquals(listOf("c1" to "커리어"), categories.map { it.id to it.name }) // no 회사/일상/… added on upgrade
+            assertNull(categories.single().archivedAt)
+            assertEquals("c1", db.recordDao().get("r1")?.categoryId)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun freshDatabaseOpensAtV3() = runBlocking {
+        val db = openLatest()
+        try {
+            assertEquals(3, db.openHelper.writableDatabase.version)
             assertNull(db.relatedDao().nextPending())
         } finally {
             db.close()

@@ -58,6 +58,9 @@
 - [ ] Explore topic이 명시된 recurring / change ("잠 못 드는 밤이 반복됐던 때", "달리기에 대한 마음이 변했나?"): 실제 Qwen runtime이 생긴 뒤 topic 추출 → e5 high-recall 후보 → 작성일 순 multi-record Qwen 1회 (`ExploreQuery`에 variant 추가). 그 전까지 일반 e5. topic 없는 broad aggregation / change ("자꾸 반복되는 걱정", "생각을 바꾼 주제")는 MVP에서 특별 처리하지 않는다 (semantic clustering / index 테이블 추가하지 않음).
 - [ ] reminders, photo picker (Photo Picker + copy into app storage → `photo_path`).
 - [x] Editor: compact attribute panel while the keyboard is open (M1.5: labels and the big button hide; 저장 stays in the top bar).
+- [x] 카테고리 정책 (미커밋): 신규 설치 기본 회사 · 일상 · 취미 · 관계 · 기타, 기존 설치는 그대로. 삭제 = archive(`categories.archived_at`, Room v3 `MIGRATION_2_3`) — 새 기록 선택지에서만 제외, Edit은 현재 값 유지, Records 필터는 사용 기록이 있으면 표시, Explore/검색 변경 없음 (`CategoryPolicy`)
+  - [ ] 카테고리 관리 UI(추가 · 삭제 dialog)는 Settings 단계에서. 삭제 dialog copy는 `CategoryPolicy`에 있음, restore UI 없음
+  - [ ] 이름 unique index: archive된 이름과 같은 새 카테고리 추가 시 충돌 — 추가 UI 만들 때 정책 결정(복원 / 이름 변경)
 - [ ] Editor: consider a one-line toolbar (emotion/category as a single row) if the compact panel still feels tight on small screens.
 - [ ] Records List: search icon (Figma) arrives with Explore.
 - [ ] Record Detail: 관련 결과 섹션 (M6-4 구현) + "지금의 생각 덧붙이기" action (Figma, 미정).
