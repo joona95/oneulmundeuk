@@ -63,5 +63,6 @@ adb uninstall app.placeholder.journal   # 이전 placeholder 앱 (테스트 데�
 - schema를 바꾸면: version +1 · `MIGRATION_n_(n+1)` 작성 · 새 `app/schemas/app.oneulmundeuk.data.db.AppDatabase/<n>.json` 커밋 · MigrationTest 추가.
 - `fallbackToDestructiveMigration` 금지. 이미 배포(설치)된 migration · schema JSON은 수정하지 않는다. 컬럼 삭제 / rename보다 추가 위주.
 - 실기기에서 이전 버전 위에 업데이트 설치(`installRelease`)해 기록이 유지되는지 확인한 뒤 실사용 앱에 올린다.
-- backup / device transfer: `allowBackup=false` + `data_extraction_rules.xml`이 database · sharedpref를 제외 (개인 기록은 기기 밖으로 나가지 않음).
+- backup / device transfer: `allowBackup=false` + `data_extraction_rules.xml`이 database · sharedpref · `files/datastore/`(새 기록 draft 포함)를 제외 (개인 기록은 기기 밖으로 나가지 않음).
+- 새 기록 draft는 Room이 아니라 Preferences DataStore(`local_prefs`)에 있다 — 기록 목록 · 검색 · Related에 포함되지 않음.
   대신 앱 삭제 · 기기 교체 시 복구 수단이 없다 — 내보내기 / 암호화 백업은 데이터 보호 milestone에서 결정.

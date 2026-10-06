@@ -1,6 +1,12 @@
 package app.oneulmundeuk
 
 import android.app.Application
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
+import app.oneulmundeuk.data.draft.DataStoreDraftStore
+import app.oneulmundeuk.data.draft.DraftStore
 import app.oneulmundeuk.data.RecordRepository
 import app.oneulmundeuk.data.db.AppDatabase
 import app.oneulmundeuk.related.RecordChangeListener
@@ -41,6 +47,13 @@ class AppContainer(app: Application) {
      * Without a local e5 (release today) only pure date questions are answered; others show "준비하고 있어요".
      */
     val semanticSearch: SemanticSearch by lazy { ExploreSearch(RoomSearchStorage(database), relatedRuntime.textEmbedder) }
+    /**
+     * Small local key-value store (Preferences DataStore, files/datastore/local_prefs.preferences_pb) — one instance per
+     * process. Today: the new-record draft only; later settings can live here too. Excluded from backup / transfer.
+     */
+    val preferences: DataStore<Preferences> by lazy { PreferenceDataStoreFactory.create { app.preferencesDataStoreFile("local_prefs") } }
+    /** The one in-progress new record (never in Room, so never a record anywhere in the app). */
+    val recordDraftStore: DraftStore by lazy { DataStoreDraftStore(preferences) }
     /** Home "다시 만난 생각" (date-based for now; swappable later). */
     val resurfacer: ResurfacedRecordSelector = DateBasedResurfacedRecordSelector()
 }

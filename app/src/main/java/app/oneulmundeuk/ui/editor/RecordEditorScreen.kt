@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +60,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.oneulmundeuk.ui.components.AppTopBar
@@ -82,7 +85,7 @@ fun RecordEditorScreen(
     onOpenRelated: (String) -> Unit,
     viewModel: RecordEditorViewModel = viewModel {
         val c = container()
-        RecordEditorViewModel(c.repository, c.relatedRepository, recordId)
+        RecordEditorViewModel(c.repository, c.relatedRepository, recordId, drafts = c.recordDraftStore)
     },
 ) {
     val t = AppTheme.tokens
@@ -101,6 +104,12 @@ fun RecordEditorScreen(
         if (state.saved) { keyboard?.hide(); focusManager.clearFocus() }
     }
     BackHandler(enabled = state.saved) { /* the feedback is ~0.7s; let it finish instead of double-popping */ }
+    // System / predictive back goes through the same exit decision as the top-bar X (new record with text → dialog).
+    // While the dialog is open, back is handled by the dialog itself (onDismissRequest).
+    BackHandler(enabled = !state.saved) { viewModel.requestExit() }
+    LaunchedEffect(state.exited) { if (state.exited) onClose() }
+    // Going to the background (or the process may be killed soon): write the latest text now, not after the debounce.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.flushDraft() }
     LaunchedEffect(Unit) { if (!viewModel.isEditing) focus.requestFocus() }
 
     // Keep the cursor visible while writing long text. The text field grows inside the scrolling column, so
@@ -132,7 +141,7 @@ fun RecordEditorScreen(
                 AppTopBar(
                     title = if (viewModel.isEditing) "기록 수정" else "새 기록",
                     navigationIcon = {
-                        IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "닫기") }
+                        IconButton(onClick = viewModel::requestExit) { Icon(Icons.Filled.Close, contentDescription = "닫기") }
                     },
                     actions = {
                         TextButton(onClick = viewModel::save, enabled = state.canSave) {
@@ -226,6 +235,17 @@ fun RecordEditorScreen(
                     }
                 }
             }
+        }
+
+        if (state.exitConfirm) {
+            // Outside tap / back → only the dialog closes. No "취소" label: it would be unclear what gets cancelled.
+            AlertDialog(
+                onDismissRequest = viewModel::dismissExitDialog,
+                title = { Text("작성 중인 생각이 있어요") },
+                text = { Text("다음에 이어서 쓸 수 있도록 임시로 저장해둘까요?") },
+                confirmButton = { TextButton(onClick = viewModel::keepDraftAndExit) { Text("임시저장") } },
+                dismissButton = { TextButton(onClick = viewModel::discardAndExit) { Text("버리기") } },
+            )
         }
 
         if (state.saved) {
