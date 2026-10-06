@@ -48,7 +48,8 @@ import app.oneulmundeuk.ui.theme.AppTheme
  * hero (title · subtitle · search bar · on-device note) → 이렇게 물어볼 수 있어요 → 자주 등장한 주제.
  * No page title — the hero is the title. Sections 40 apart, 12 inside a section (Figma tokens).
  * Suggested questions (deterministic templates over the user's records — date periods / recurring categories) run the
- * search; topic chips open Records filtered by that category.
+ * search; with none yet (no / few records) the section shows static, display-only examples instead
+ * ([ExploreCopy.ONBOARDING_EXAMPLES]). Topic chips open Records filtered by that category.
  */
 @Composable
 fun ExploreScreen(
@@ -62,7 +63,7 @@ fun ExploreScreen(
 ) {
     val t = AppTheme.tokens
     val topics by viewModel.topics.collectAsStateWithLifecycle()
-    val questions by viewModel.questions.collectAsStateWithLifecycle()
+    val examples by viewModel.examples.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
@@ -90,14 +91,20 @@ fun ExploreScreen(
                     }
                 }
             }
-            if (questions.isNotEmpty()) { // nothing answerable yet (few records) → no section, never filler questions
+            examples?.let { section ->
                 item(key = "examples") {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(t.spacing.sm),
                         modifier = Modifier.padding(top = t.spacing.sectionGap),
                     ) {
                         Text(ExploreCopy.EXAMPLES_TITLE, style = MaterialTheme.typography.titleMedium, color = t.textPrimary)
-                        ExampleQueries(questions, onPick = { onSearch(it.text, it.categoryId) })
+                        when (section) {
+                            is ExampleSection.Suggested -> ExampleQueries(section.questions, onPick = { onSearch(it.text, it.categoryId) })
+                            is ExampleSection.Onboarding -> {
+                                Text(ExploreCopy.ONBOARDING_CAPTION, style = MaterialTheme.typography.bodySmall, color = t.textSecondary)
+                                OnboardingExamples(section.examples)
+                            }
+                        }
                     }
                 }
             }
@@ -141,6 +148,35 @@ private fun ExampleQueries(questions: List<SuggestedQuestion>, onPick: (Suggeste
                     Icon(Icons.Filled.Search, contentDescription = null, tint = t.textSecondary, modifier = Modifier.size(16.dp))
                     Text(q.text, style = MaterialTheme.typography.bodyMedium, color = t.textPrimary, modifier = Modifier.weight(1f))
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = t.textTertiary, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Static examples (no records yet): the same card as [ExampleQueries] but display only — no click, no ›, quieter text —
+ * so they read as "you'll be able to ask this", not as the user's own suggestions.
+ */
+@Composable
+private fun OnboardingExamples(examples: List<String>) {
+    val t = AppTheme.tokens
+    Surface(
+        shape = t.radii.card,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(t.sizes.hairline, t.border),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            examples.forEachIndexed { index, text ->
+                if (index > 0) Box(Modifier.fillMaxWidth().height(t.sizes.hairline).background(t.border))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(t.spacing.sm),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = t.spacing.cardPadding, vertical = t.spacing.md),
+                ) {
+                    Icon(Icons.Filled.Search, contentDescription = null, tint = t.textTertiary, modifier = Modifier.size(16.dp))
+                    Text(text, style = MaterialTheme.typography.bodyMedium, color = t.textSecondary, modifier = Modifier.weight(1f))
                 }
             }
         }

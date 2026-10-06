@@ -6,7 +6,11 @@ import app.oneulmundeuk.data.model.RecordWithCategory
 import app.oneulmundeuk.search.SemanticSearchResult
 import app.oneulmundeuk.search.UnavailableSemanticSearch
 import app.oneulmundeuk.ui.explore.Explore
+import app.oneulmundeuk.ui.explore.ExampleSection
 import app.oneulmundeuk.ui.explore.ExploreCopy
+import app.oneulmundeuk.ui.explore.SuggestedQuestion
+import app.oneulmundeuk.search.ExploreQuery
+import java.time.LocalDate
 import app.oneulmundeuk.ui.explore.SearchResultsState
 import app.oneulmundeuk.ui.explore.SearchSort
 import app.oneulmundeuk.ui.navigation.SearchResultsRoute
@@ -89,5 +93,34 @@ class ExploreTest {
     fun resultsRouteCarriesOnlyTheQuestionAndAnOptionalCategoryHint() {
         assertEquals(null, SearchResultsRoute("q").categoryHint) // typed questions: no hint
         assertEquals(listOf("query", "categoryHint"), SearchResultsRoute::class.java.declaredFields.filterNot { java.lang.reflect.Modifier.isStatic(it.modifiers) }.map { it.name })
+    }
+
+    // ── 이렇게 물어볼 수 있어요: data suggestions vs static onboarding examples ──
+
+    @Test
+    fun noSuggestionShowsOnboardingExamples() {
+        val section = Explore.exampleSection(emptyList())
+        assertEquals(ExampleSection.Onboarding(ExploreCopy.ONBOARDING_EXAMPLES), section)
+        assertEquals(4, ExploreCopy.ONBOARDING_EXAMPLES.size)
+    }
+
+    @Test
+    fun dataSuggestionsWinOverOnboardingExamples() {
+        val qs = listOf(SuggestedQuestion("작년 이맘때 무슨 생각을 했지?"), SuggestedQuestion("일에 대해 예전엔 어떤 생각을 했지?", "c1"))
+        assertEquals(ExampleSection.Suggested(qs), Explore.exampleSection(qs))
+        assertEquals(4, app.oneulmundeuk.ui.explore.SuggestedQuestions.MAX) // real data: at most 4, never padded
+    }
+
+    @Test
+    fun onboardingExamplesAreKindsTheEngineAnswers() {
+        // semantic or pure date only — never a date+content mix the example copy does not intend, and no aggregation wording
+        val today = LocalDate.of(2026, 10, 6)
+        val kinds = ExploreCopy.ONBOARDING_EXAMPLES.map { ExploreQuery.of(it, today)::class }
+        val semantic = ExploreQuery.Semantic::class
+        assertEquals(listOf(semantic, ExploreQuery.PureTemporal::class, semantic, semantic), kinds)
+        ExploreCopy.ONBOARDING_EXAMPLES.forEach { q ->
+            listOf("자주", "달라진", "변했", "몇 번", "요즘", "가장 많이", "최근", "감정").forEach { assertTrue(q, it !in q) }
+            listOf("이직", "사이드 프로젝트").forEach { assertTrue(q, it !in q) } // no assumed interests
+        }
     }
 }

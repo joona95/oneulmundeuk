@@ -33,10 +33,13 @@ class ExploreViewModel(
     val topics: StateFlow<List<CategoryEntity>> = combine(repository.observeRecords(), repository.observeCategories(), Explore::frequentTopics)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** 이렇게 물어볼 수 있어요 — 0..4 answerable questions (hidden when empty). */
-    val questions: StateFlow<List<SuggestedQuestion>> = combine(repository.observeRecords(), repository.observeCategories()) { records, categories ->
-        SuggestedQuestions.build(records, categories, semanticAvailable, today(), zone)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /**
+     * 이렇게 물어볼 수 있어요 — 0..4 answerable questions, or the static onboarding examples when there are none.
+     * null until Room answers (so a user with records never sees the onboarding examples flash).
+     */
+    val examples: StateFlow<ExampleSection?> = combine(repository.observeRecords(), repository.observeCategories()) { records, categories ->
+        Explore.exampleSection(SuggestedQuestions.build(records, categories, semanticAvailable, today(), zone))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 }
 
 /**

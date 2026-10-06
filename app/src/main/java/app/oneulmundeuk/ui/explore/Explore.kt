@@ -11,6 +11,20 @@ object ExploreCopy {
     const val SEARCH_PLACEHOLDER = "무엇이든 물어보세요"
     const val PRIVACY = "검색은 이 기기 안에서만 이루어져요"
     const val EXAMPLES_TITLE = "이렇게 물어볼 수 있어요"
+    const val ONBOARDING_CAPTION = "기록이 쌓이면 이런 질문을 할 수 있어요"
+
+    /**
+     * Static examples shown only when no data-based suggestion exists (no / few records). Always these 4, display only
+     * (no records → a search would find nothing). Generic on purpose — no assumed interests (이직, 사이드 프로젝트…).
+     * Each must be a kind the engine answers today: semantic (e5), or a supported date question.
+     * No recurring / change / aggregation questions ("요즘 자주…", "어떻게 변했지", "가장 많이…", "최근 감정…").
+     */
+    val ONBOARDING_EXAMPLES = listOf(
+        "예전의 나는 어떤 고민을 하고 있었지?",
+        "작년 이맘때 무슨 생각을 했지?",
+        "예전에 일에 대해 어떤 생각을 했지?",
+        "예전에 나 자신에 대해 어떤 생각을 했지?",
+    )
     const val TOPICS_TITLE = "자주 등장한 주제"
     const val SORT_RELEVANCE = "관련도순"
     const val SORT_TIME = "시간순"
@@ -24,6 +38,15 @@ object ExploreCopy {
 
 enum class SearchSort { Relevance, Time }
 
+/** 이렇게 물어볼 수 있어요 section: real suggestions win; otherwise the static onboarding examples. */
+sealed interface ExampleSection {
+    /** Data-based, tappable (runs the search). */
+    data class Suggested(val questions: List<SuggestedQuestion>) : ExampleSection
+
+    /** No suggestion can be made yet: display-only examples + [ExploreCopy.ONBOARDING_CAPTION]. */
+    data class Onboarding(val examples: List<String>) : ExampleSection
+}
+
 /** Search results screen. Never shows anything the engine did not return. */
 sealed interface SearchResultsState {
     data object Loading : SearchResultsState
@@ -36,6 +59,9 @@ sealed interface SearchResultsState {
 }
 
 object Explore {
+    fun exampleSection(questions: List<SuggestedQuestion>): ExampleSection =
+        if (questions.isNotEmpty()) ExampleSection.Suggested(questions) else ExampleSection.Onboarding(ExploreCopy.ONBOARDING_EXAMPLES)
+
     /** Trimmed query, or null when there is nothing to ask (the search does not run). */
     fun searchQuery(input: String): String? = input.trim().takeIf { it.isNotEmpty() }
 
