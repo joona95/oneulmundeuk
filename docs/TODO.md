@@ -46,10 +46,10 @@
   - [ ] M6-5 기능 상태 · Settings: DataStore(enabled · 제안 상태) · 모델 상태 machine · Settings `관련된 생각 찾기` ON/OFF · `AI 모델 삭제` · 10개 제안 sheet. (다운로드는 fake)
   - [~] M6-6 모델 다운로드 기반 (미커밋): `related/model` — `RelatedModels`(e5 + Qwen manifest) · `ModelInstaller`(noBackupFilesDir/models · `.part` 이어받기 · size + sha256 · marker · 원자적 rename · 삭제 · 복구) · `SemanticGate`(ON AND Ready) · Settings 상태 UX(모델 받기 · 진행률 · 준비됨 · AI 모델 삭제). 방식: in-app 다운로드(DownloadManager 아님 — 앱 내부 저장소에 직접 쓰고 복사 없이 rename).
     - [ ] 모델 호스트 확정 → `ModelSource.Https` URL · HTTPS `ModelFetcher`(Range) 구현 · `INTERNET` + `ACCESS_NETWORK_STATE` 권한 · Manifest 주석
-    - [ ] e5 Android artifact(ONNX 변환 · tokenizer) 확정 → 파일명 · 크기 · sha256 (M6-8). 그 전까지 번들은 READY가 될 수 없음
+    - [x] e5 Android artifact 확정 (M6-8, 2026-10): INT8-embrows ONNX 183,192,536 bytes + tokenizer 8,080,014 bytes → `RelatedModels.E5` · `E5_TOKENIZER` (source는 Unconfigured). 근거 `experiments/e5-android/README.md`
     - [ ] 모바일 데이터에서 "지금 받기" 동의(MVP는 Wi-Fi 전용) · 다운로드 취소 버튼
   - [ ] M6-7 local Qwen: llama.cpp JNI(NDK, arm64-v8a) · judge_v1 asset(sha 검사) · JSON schema · thinking off. 앱 안에서 frozen 157쌍 → PoC 제품 지표(Bad .25 · Good@5 .64 · F7 1/4)와 비교.
-  - [ ] M6-8 local e5: ONNX 변환 · tokenizer · runtime. frozen 157쌍에서 Mac e5 run과 Top 30 순위 비교.
+  - [~] M6-8 local e5: ONNX 변환 · Kotlin tokenizer · `E5Embedder`(ORT Android 1.25.0, `mlas.disable_kleidiai=1`) · 실기기 검증 완료, production = INT8-embrows (FP32는 reference). 남음: pipeline 연결 후 frozen 157쌍에서 Mac e5 run과 Top 30 순위 비교.
   - [ ] M6-9 WorkManager 연결: `RelatedWorker` · 실행 조건 · 발열 · 실행 예산 · 재시도. 실제 기기에서 저장 → 결과 노출까지 end-to-end (latency · 배터리 · RSS).
   - [ ] M6-9 늦게 끝난 결과 UX 결정: grace window 뒤 DONE을 어떻게 알릴지 (local notification / 다음 앱 진입 one-shot / 조용한 inbox · indicator). Home 상시 semantic 카드는 쓰지 않는다. 실제 모델 latency를 본 뒤 grace window 길이도 다시 확인.
     - FAILED 재시도 정책: 최대 3회 · backoff. 현재 `requeue`는 attempts를 0으로 되돌리므로 attempts를 유지하는 재대기 경로를 이때 추가 (M6-3에서 보류).

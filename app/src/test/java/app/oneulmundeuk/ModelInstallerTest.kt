@@ -264,8 +264,13 @@ class ModelInstallerTest {
         assertFalse(i.downloadAvailable) // Settings: disabled button + "준비 중" line
         assertEquals(StartResult.Refused(ModelProblem.SOURCE_NOT_CONFIGURED), i.startDownload())
         assertEquals(ModelInstallState.NotInstalled, runBlocking { i.refresh(); i.state.value })
-        assertEquals(null, i.totalBytes) // e5 Android artifact not fixed → no total, only a lower bound
-        assertEquals(1_274_396_992L, i.knownBytes)
+        assertEquals(183_192_536L + 8_080_014L + 1_274_396_992L, i.totalBytes) // every size fixed, only the host is missing
+        // e5: the device-verified INT8 (embrows) ONNX + its tokenizer (experiments/e5-android)
+        assertEquals("e5-small-ko-v2-fcfc26bf.int8-embrows.onnx", RelatedModels.E5.fileName)
+        assertEquals("ab2d3fa70720f6026106572b729606f1ad33257538984abe0fd262c81855e04a", RelatedModels.E5.sha256)
+        assertEquals("e5-small-ko-v2-tokenizer.txt", RelatedModels.E5_TOKENIZER.fileName)
+        assertEquals("6aab11c24ea1ecb59cf74fc8fc0f09f03129e3df249aa2aba47f13ed78cca893", RelatedModels.E5_TOKENIZER.sha256)
+        assertEquals(RelatedModels.BUNDLE.size, RelatedModels.BUNDLE.map { it.id }.toSet().size) // one directory per artifact
         // Qwen: exactly the PoC-verified GGUF
         assertEquals("qwen3.5-2b-q4_K_M.gguf", RelatedModels.QWEN.fileName)
         assertEquals("20cb277f0967ace47b0b5d5658e5e494a88937f7378b74b5a266496400938f4c", RelatedModels.QWEN.sha256)

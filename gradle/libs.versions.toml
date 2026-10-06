@@ -10,6 +10,9 @@ lifecycle = "2.8.7"
 navigation = "2.8.5"
 room = "2.6.1"
 datastore = "1.1.1"
+# 1.23.x–1.24.2 enable KleidiAI SME2 kernels on CPUs with SME but no SME2 → SIGILL (ORT issue #26377; seen on
+# SM8850 / SM-S948N). 1.25.0 adds the "mlas.disable_kleidiai" session option, which E5Embedder sets.
+onnxruntime = "1.25.0"
 serialization = "1.7.3"
 coroutines = "1.9.0"
 junit = "4.13.2"
@@ -32,6 +35,7 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
