@@ -2,6 +2,7 @@ package app.oneulmundeuk.ui.editor
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -34,11 +37,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Rect
@@ -46,7 +55,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,7 +71,7 @@ import app.oneulmundeuk.ui.container
 import app.oneulmundeuk.ui.theme.AppTheme
 import app.oneulmundeuk.util.TimeFormat
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun RecordEditorScreen(
     recordId: String?,
@@ -92,6 +103,27 @@ fun RecordEditorScreen(
     BackHandler(enabled = state.saved) { /* the feedback is ~0.7s; let it finish instead of double-popping */ }
     LaunchedEffect(Unit) { if (!viewModel.isEditing) focus.requestFocus() }
 
+    // Keep the cursor visible while writing long text. The text field grows inside the scrolling column, so
+    // the column itself must scroll — the field only brings itself (not its cursor) into view on focus.
+    // The ViewModel still owns the String; this local value only adds the cursor position (same as the String
+    // overload of BasicTextField does internally). External text (record loaded for editing) always wins.
+    var fieldState by remember { mutableStateOf(TextFieldValue(state.text)) }
+    val fieldValue = fieldState.copy(text = state.text)
+    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var fieldFocused by remember { mutableStateOf(false) }
+    var viewportHeight by remember { mutableIntStateOf(0) } // shrinks when the keyboard opens (panel takes the IME inset)
+    val cursorRequester = remember { BringIntoViewRequester() }
+    val cursorBottomMargin = with(LocalDensity.current) { t.spacing.xl.toPx() } // a little air above the panel / keyboard
+    // Runs on cursor move, text re-layout, and viewport resize. bringIntoView scrolls only when the cursor
+    // (+ margin) is not fully visible, and only as far as needed: never "jump to the bottom", no jump when
+    // the keyboard closes (the viewport grows, the cursor stays visible), nothing while the field is not focused.
+    LaunchedEffect(fieldValue.selection, textLayout, viewportHeight, fieldFocused) {
+        val layout = textLayout ?: return@LaunchedEffect
+        if (!fieldFocused) return@LaunchedEffect
+        val cursor = layout.getCursorRect(fieldValue.selection.end.coerceIn(0, layout.layoutInput.text.length))
+        cursorRequester.bringIntoView(cursor.copy(bottom = cursor.bottom + cursorBottomMargin))
+    }
+
     Box(Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -115,6 +147,7 @@ fun RecordEditorScreen(
                 Column(
                     Modifier
                         .weight(1f)
+                        .onSizeChanged { viewportHeight = it.height }
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = t.spacing.screenPadding, vertical = t.spacing.xs),
                     verticalArrangement = Arrangement.spacedBy(t.spacing.md),
@@ -126,14 +159,20 @@ fun RecordEditorScreen(
                         color = t.textTertiary,
                     )
                     BasicTextField(
-                        value = state.text,
-                        onValueChange = viewModel::onTextChange,
+                        value = fieldValue,
+                        onValueChange = { v ->
+                            fieldState = v
+                            if (v.text != state.text) viewModel.onTextChange(v.text) // text edits only, like the String overload
+                        },
+                        onTextLayout = { textLayout = it },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = t.textPrimary),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = t.sizes.buttonMinHeight * 3)
                             .padding(bottom = t.spacing.xl)
+                            .bringIntoViewRequester(cursorRequester) // after the padding: same origin as the text layout
+                            .onFocusChanged { fieldFocused = it.isFocused }
                             .focusRequester(focus),
                         decorationBox = { field ->
                             Box {
