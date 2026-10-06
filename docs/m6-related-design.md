@@ -216,7 +216,7 @@ interface ModelSource { fun urlsFor(artifact: ModelArtifact): List<String> }  //
 ```
 
 호스팅 요구사항: HTTPS · 정적 파일 · 버전별 불변 URL · HTTP Range(이어받기) · 인증 · 쿠키 · 사용자 식별 없음 · 1.3 GB 이상 단일 파일 · 재배포가 라이선스상 가능 · 실패 시 미러로 대체 가능.
-다운로드는 플랫폼 `DownloadManager` 기본안 (이어받기 · 네트워크 조건 · 진행 알림을 OS가 처리, 새 dependency 없음) → 받은 뒤 sha256 · 크기 검증 → 내부 저장소로 원자적 이동. 검증 실패 시 파일 삭제 · `Failed`.
+(M6-6 구현 결정: DownloadManager 대신 **in-app 다운로드** — DownloadManager는 앱 내부 `noBackupFilesDir`에 직접 쓰지 못해 1.3 GB 복사가 필요하고 호출 앱에도 INTERNET 권한이 필요하다. 앱 coroutine으로 `.part`에 받고(Range 이어받기) 검증 후 같은 폴더에서 rename. 프로세스가 죽으면 `.part`가 남아 다음 `모델 받기`에서 이어 받는다.) ~~다운로드는 플랫폼 `DownloadManager` 기본안 (이어받기 · 네트워크 조건 · 진행 알림을 OS가 처리, 새 dependency 없음) → 받은 뒤 sha256 · 크기 검증 → 내부 저장소로 원자적 이동. 검증 실패 시 파일 삭제 · `Failed`.~~
 
 **e5 모델 배포 (확정)**: 앱에 포함하지 않고 **e5와 Qwen을 하나의 선택형 모델 다운로드 흐름**으로 제공한다 (합계 약 1.4 GB). 기능을 켜기 전에는 embedding이 필요 없고, 거절한 사용자에게 크기 부담을 주지 않는다. 모델 상태(5절)는 두 파일을 묶은 하나의 상태로 다룬다 — 둘 다 검증돼야 `Ready`.
 

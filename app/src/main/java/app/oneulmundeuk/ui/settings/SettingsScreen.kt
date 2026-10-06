@@ -23,13 +23,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -40,6 +46,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.oneulmundeuk.data.model.Emotion
 import app.oneulmundeuk.data.settings.RelatedThoughtsStatus
+import app.oneulmundeuk.related.model.ModelInstallState
+import app.oneulmundeuk.related.model.ModelProblem
 import app.oneulmundeuk.ui.components.AppTopBar
 import app.oneulmundeuk.ui.components.CategoryTag
 import app.oneulmundeuk.ui.components.EmotionMarker
@@ -63,8 +71,31 @@ object SettingsCopy {
     const val RELATED = "관련된 생각"
     const val RELATED_ROW = "관련된 생각 찾기"
     const val RELATED_BODY = "지금의 생각과 이어지는 예전 기록을 찾아드려요."
-    const val RELATED_NOT_READY = "아직 이 기기에서 쓸 준비가 되지 않았어요. 준비 기능은 곧 추가돼요."
-    const val RELATED_DOWNLOADING = "준비하고 있어요."
+    fun relatedNeedsModel(size: String) = "기기 안에서 분석하려면 모델을 받아야 해요. 저장 공간이 $size 필요해요. Wi-Fi에서 받아 주세요."
+    const val RELATED_MODEL_PREPARING = "기기 안에서 쓸 모델을 준비하고 있어요. 준비되면 여기에서 받을 수 있어요."
+    const val MODEL_DOWNLOAD = "모델 받기"
+    fun relatedDownloading(percent: Int) = "모델을 받고 있어요 · $percent%"
+    const val RELATED_DOWNLOADING_HINT = "받는 동안 앱을 계속 사용할 수 있어요."
+    const val RELATED_READY = "사용할 준비가 되었어요"
+    fun modelOnDisk(size: String) = "모델이 $size 차지하고 있어요."
+    const val MODEL_DELETE = "AI 모델 삭제"
+    const val MODEL_DELETE_TITLE = "AI 모델을 삭제할까요?"
+    const val MODEL_DELETE_BODY = "기록과 이미 찾은 관련된 생각은 그대로 남아요.\n관련된 생각 찾기는 꺼져요."
+    const val CANCEL = "취소"
+    const val DELETE = "삭제"
+
+    fun problem(p: ModelProblem): String = when (p) {
+        ModelProblem.SOURCE_NOT_CONFIGURED -> "지금은 모델을 받을 수 없어요. 앱이 업데이트되면 다시 시도해 주세요."
+        ModelProblem.NEEDS_WIFI -> "Wi-Fi에 연결한 뒤 다시 시도해 주세요."
+        ModelProblem.NOT_ENOUGH_SPACE -> "저장 공간이 부족해요. 공간을 확보한 뒤 다시 시도해 주세요."
+        ModelProblem.DOWNLOAD_FAILED -> "모델을 다 받지 못했어요. 다시 시도하면 이어서 받아요."
+        ModelProblem.VERIFY_FAILED -> "받은 모델을 확인하지 못했어요. 다시 시도해 주세요."
+        ModelProblem.DELETE_FAILED -> "모델을 삭제하지 못했어요. 다시 시도해 주세요."
+    }
+
+    /** "약 1.3GB" / "약 450MB" — size only, never raw bytes. */
+    fun size(bytes: Long): String =
+        "약 " + if (bytes >= 1_000_000_000L) "%.1fGB".format(bytes / 1e9) else "${(bytes / 1_000_000L).coerceAtLeast(1)}MB"
     const val RELATED_PRIVACY = "기록 분석은 기기 안에서 이루어져요."
 }
 
@@ -77,7 +108,7 @@ fun SettingsScreen(
     onOpenCategories: () -> Unit,
     viewModel: SettingsViewModel = viewModel {
         val c = container()
-        SettingsViewModel(c.repository, c.settingsStore)
+        SettingsViewModel(c.repository, c.settingsStore, c.modelInstaller)
     },
 ) {
     val t = AppTheme.tokens
@@ -99,7 +130,7 @@ fun SettingsScreen(
                     }
                 }
             }
-            item(key = "related") { RelatedSection(state, viewModel::setRelatedEnabled) }
+            item(key = "related") { RelatedSection(state, viewModel::setRelatedEnabled, viewModel::downloadModels, viewModel::deleteModels) }
             item(key = "nav-bar-space") { Box(Modifier.navigationBarsPadding()) }
         }
     }
@@ -176,19 +207,61 @@ private fun ShapeOption(shape: MarkerShape, selected: Boolean, onClick: () -> Un
 }
 
 @Composable
-private fun RelatedSection(state: SettingsUiState, onToggle: (Boolean) -> Unit) {
+private fun RelatedSection(
+    state: SettingsUiState,
+    onToggle: (Boolean) -> Unit,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val t = AppTheme.tokens
+    var confirmDelete by remember { mutableStateOf(false) }
     Group(SettingsCopy.RELATED) {
         Card {
             SwitchRow(SettingsCopy.RELATED_ROW, SettingsCopy.RELATED_BODY, state.settings.relatedEnabled, onToggle)
-            val status = when (state.relatedStatus) {
-                RelatedThoughtsStatus.MODEL_NOT_DOWNLOADED -> SettingsCopy.RELATED_NOT_READY
-                RelatedThoughtsStatus.DOWNLOADING -> SettingsCopy.RELATED_DOWNLOADING
-                RelatedThoughtsStatus.OFF, RelatedThoughtsStatus.READY -> null
+            when (state.relatedStatus) {
+                RelatedThoughtsStatus.MODEL_NOT_DOWNLOADED -> {
+                    Divider()
+                    Column(Modifier.padding(t.spacing.md), verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
+                        // Manifest not complete yet (development): a quiet "준비 중" line and a disabled button instead of a
+                        // button that can only fail. Becomes the normal flow by itself once the artifacts are set.
+                        Text(
+                            if (state.downloadAvailable) SettingsCopy.relatedNeedsModel(SettingsCopy.size(state.modelBytes))
+                            else SettingsCopy.RELATED_MODEL_PREPARING,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = t.textSecondary,
+                        )
+                        state.problem?.let { ProblemText(it) }
+                        TextButton(onClick = onDownload, enabled = state.downloadAvailable, contentPadding = PaddingValues(horizontal = t.spacing.xs)) {
+                            Text(SettingsCopy.MODEL_DOWNLOAD, style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+                RelatedThoughtsStatus.DOWNLOADING -> {
+                    val d = state.install as? ModelInstallState.Downloading
+                    Divider()
+                    Column(Modifier.padding(t.spacing.md), verticalArrangement = Arrangement.spacedBy(t.spacing.xs)) {
+                        Text(SettingsCopy.relatedDownloading(((d?.fraction ?: 0f) * 100).toInt()), style = MaterialTheme.typography.bodySmall, color = t.textPrimary)
+                        LinearProgressIndicator(progress = { d?.fraction ?: 0f }, modifier = Modifier.fillMaxWidth())
+                        Text(SettingsCopy.RELATED_DOWNLOADING_HINT, style = MaterialTheme.typography.labelSmall, color = t.textTertiary)
+                    }
+                }
+                RelatedThoughtsStatus.READY -> {
+                    Divider()
+                    Text(SettingsCopy.RELATED_READY, style = MaterialTheme.typography.bodySmall, color = t.textPrimary, modifier = Modifier.padding(t.spacing.md))
+                }
+                RelatedThoughtsStatus.OFF -> Unit
             }
-            if (status != null) {
+            // Installed models can be removed whether the switch is on or off (OFF never deletes them by itself).
+            val ready = state.install as? ModelInstallState.Ready
+            if (ready != null || state.problem == ModelProblem.DELETE_FAILED) {
                 Divider()
-                Text(status, style = MaterialTheme.typography.bodySmall, color = t.textSecondary, modifier = Modifier.padding(t.spacing.md))
+                Column(Modifier.padding(start = t.spacing.md, end = t.spacing.xs, top = t.spacing.xs, bottom = t.spacing.xs)) {
+                    ready?.let { Text(SettingsCopy.modelOnDisk(SettingsCopy.size(it.bytesOnDisk)), style = MaterialTheme.typography.bodySmall, color = t.textSecondary) }
+                    if (state.problem == ModelProblem.DELETE_FAILED) ProblemText(ModelProblem.DELETE_FAILED)
+                    TextButton(onClick = { confirmDelete = true }, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                        Text(SettingsCopy.MODEL_DELETE, style = MaterialTheme.typography.labelLarge, color = t.textSecondary)
+                    }
+                }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(t.spacing.xxs)) {
@@ -196,6 +269,22 @@ private fun RelatedSection(state: SettingsUiState, onToggle: (Boolean) -> Unit) 
             Text(SettingsCopy.RELATED_PRIVACY, style = MaterialTheme.typography.labelSmall, color = t.textTertiary)
         }
     }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(SettingsCopy.MODEL_DELETE_TITLE) },
+            text = { Text(SettingsCopy.MODEL_DELETE_BODY) },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onDelete() }) { Text(SettingsCopy.DELETE, color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(SettingsCopy.CANCEL) } },
+        )
+    }
+}
+
+@Composable
+private fun ProblemText(problem: ModelProblem) {
+    Text(SettingsCopy.problem(problem), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
 }
 
 // ── shared pieces (Settings + 카테고리 관리) ──

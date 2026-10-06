@@ -25,15 +25,15 @@ data class AppSettings(
     val reminderEnabled: Boolean = false,
     /**
      * 관련된 생각 — the user's wish to use the on-device semantic feature. See [RelatedThoughtsStatus].
-     * TODO(related-model): not yet wired to the pipeline; the runtime (release: none, debug: fake behind a flag file)
-     *  is unchanged. Gate analysis on this when the real model download lands. Turning it off never deletes anything.
+     * Inference is allowed only through `SemanticGate` (this AND the model bundle Ready). The current runtimes
+     *  (release: none, debug: fake behind a flag file) are unchanged. Turning it off never deletes anything.
      */
     val relatedEnabled: Boolean = false,
 )
 
 /**
  * 관련된 생각 as shown in Settings. Only [AppSettings.relatedEnabled] is persisted; the rest is derived.
- * [DOWNLOADING] / [READY] need the model download step — nothing produces them yet (no fake progress).
+ * Derived from the switch and `ModelInstaller` (real files: verified bundle = READY, a running download = DOWNLOADING).
  */
 enum class RelatedThoughtsStatus { OFF, MODEL_NOT_DOWNLOADED, DOWNLOADING, READY }
 

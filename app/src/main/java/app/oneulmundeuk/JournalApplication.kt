@@ -8,6 +8,17 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import app.oneulmundeuk.data.draft.DataStoreDraftStore
 import app.oneulmundeuk.data.draft.DraftStore
 import app.oneulmundeuk.data.settings.SettingsStore
+import app.oneulmundeuk.related.model.AndroidNetworkCheck
+import app.oneulmundeuk.related.model.ModelInstaller
+import app.oneulmundeuk.related.model.RelatedModels
+import app.oneulmundeuk.related.model.SemanticGate
+import app.oneulmundeuk.related.model.freeBytesAt
+import app.oneulmundeuk.related.model.modelRoot
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import app.oneulmundeuk.data.RecordRepository
 import app.oneulmundeuk.data.db.AppDatabase
 import app.oneulmundeuk.related.RecordChangeListener
@@ -57,6 +68,22 @@ class AppContainer(app: Application) {
     val recordDraftStore: DraftStore by lazy { DataStoreDraftStore(preferences) }
     /** Settings screen values (marker shape, 다시 만나기 알림, 관련된 생각) — same file, own keys. */
     val settingsStore: SettingsStore by lazy { SettingsStore(preferences) }
+    /** App-lifetime work that must outlive a screen (the model download). */
+    val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /**
+     * 관련된 생각 model bundle (e5 + Qwen) in noBackupFilesDir/models. fetcher = null: no model host is fixed yet, so
+     * 모델 받기 is refused as "source not configured" (no INTERNET permission, no fake download).
+     */
+    val modelInstaller: ModelInstaller by lazy {
+        ModelInstaller(modelRoot(app), RelatedModels.BUNDLE, fetcher = null, AndroidNetworkCheck(app), { freeBytesAt(app.noBackupFilesDir) }, appScope)
+    }
+    /**
+     * [SemanticGate]: 관련된 생각 ON AND models Ready. The future production runtime / worker reads this before any
+     * inference. Not wired into the current runtimes (release NoRelatedRuntime, debug fake) on purpose.
+     */
+    val semanticInferenceAllowed: Flow<Boolean> by lazy {
+        combine(settingsStore.settings, modelInstaller.state) { s, m -> SemanticGate.allows(s.relatedEnabled, m) }
+    }
     /** Home "다시 만난 생각" (date-based for now; swappable later). */
     val resurfacer: ResurfacedRecordSelector = DateBasedResurfacedRecordSelector()
 }

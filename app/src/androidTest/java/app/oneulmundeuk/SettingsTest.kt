@@ -37,7 +37,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.security.MessageDigest
+import app.oneulmundeuk.data.db.AnalysisStatus
+import app.oneulmundeuk.data.db.RelatedAnalysisEntity
+import app.oneulmundeuk.related.model.FetchResponse
+import app.oneulmundeuk.related.model.ModelArtifact
+import app.oneulmundeuk.related.model.ModelInstallState
+import app.oneulmundeuk.related.model.ModelInstaller
+import app.oneulmundeuk.related.model.ModelRole
+import app.oneulmundeuk.related.model.ModelSource
+import app.oneulmundeuk.related.model.StartResult
 
 /** Settings MVP on real Room (in-memory, production seed) + a real DataStore file + the real ViewModels. */
 @RunWith(AndroidJUnit4::class)
@@ -46,6 +57,7 @@ class SettingsTest {
     private lateinit var repo: RecordRepository
     private lateinit var scope: CoroutineScope
     private lateinit var prefs: DataStore<Preferences>
+    private lateinit var modelRoot: File
     private val stores = mutableListOf<ViewModelStore>()
 
     @Before
@@ -60,6 +72,7 @@ class SettingsTest {
         scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         val file = File(context.cacheDir, "settings-test-${System.nanoTime()}.preferences_pb")
         prefs = PreferenceDataStoreFactory.create(scope = scope) { file }
+        modelRoot = File(context.cacheDir, "models-test-${System.nanoTime()}")
     }
 
     @After
@@ -67,11 +80,21 @@ class SettingsTest {
         runBlocking(Dispatchers.Main) { stores.forEach { it.clear() } }
         scope.cancel()
         db.close()
+        modelRoot.deleteRecursively()
     }
 
     private inline fun <reified VM : androidx.lifecycle.ViewModel> vm(crossinline make: () -> VM): VM = runBlocking(Dispatchers.Main) {
         val store = ViewModelStore().also { stores += it }
         ViewModelProvider(store, viewModelFactory { initializer { make() } })[VM::class.java]
+    }
+
+    private val modelBytes = ByteArray(64_000) { (it % 251).toByte() }
+
+    /** A one-file test bundle served from memory (no network): the real installer, deterministic source. */
+    private fun installer(): ModelInstaller {
+        val sha = MessageDigest.getInstance("SHA-256").digest(modelBytes).joinToString("") { "%02x".format(it) }
+        val artifact = ModelArtifact("test-model", ModelRole.JUDGE, "bin", "v1", "test.bin", modelBytes.size.toLong(), sha, ModelSource.Https("test://model"))
+        return ModelInstaller(modelRoot, listOf(artifact), { _, offset -> FetchResponse(ByteArrayInputStream(modelBytes, offset.toInt(), modelBytes.size), offset) }, { true }, { Long.MAX_VALUE }, scope)
     }
 
     private fun <T> main(block: suspend () -> T): T = runBlocking(Dispatchers.Main) { withTimeout(5_000) { block() } }
@@ -108,7 +131,7 @@ class SettingsTest {
     @Test
     fun relatedOnWithoutModelShowsNotDownloaded() {
         val store = SettingsStore(prefs)
-        val vm = vm { SettingsViewModel(repo, store) }
+        val vm = vm { SettingsViewModel(repo, store, installer()) }
         assertEquals(RelatedThoughtsStatus.OFF, main { vm.state.first { it.loaded } }.relatedStatus)
         main { vm.setRelatedEnabled(true) }
         assertEquals(RelatedThoughtsStatus.MODEL_NOT_DOWNLOADED, main { vm.state.first { it.settings.relatedEnabled } }.relatedStatus)
@@ -117,11 +140,45 @@ class SettingsTest {
     @Test
     fun settingsShowsActiveCategoriesOnly() {
         val store = SettingsStore(prefs)
-        val vm = vm { SettingsViewModel(repo, store) }
+        val vm = vm { SettingsViewModel(repo, store, installer()) }
         assertEquals(listOf("회사", "일상", "취미", "관계", "기타"), main { vm.state.first { it.loaded } }.categories.map { it.name })
         val daily = runBlocking { repo.observeCategories().first() }.single { it.name == "일상" }
         runBlocking { repo.archiveCategory(daily.id) }
         assertEquals(listOf("회사", "취미", "관계", "기타"), main { vm.state.first { s -> s.categories.none { it.name == "일상" } } }.categories.map { it.name })
+    }
+
+    @Test
+    fun downloadThenDeleteModelsTurnsRelatedOffAndKeepsRecords() {
+        val store = SettingsStore(prefs)
+        val models = installer()
+        val vm = vm { SettingsViewModel(repo, store, models) }
+        val recordId = runBlocking { repo.create("남아야 할 기록", null, null) }
+        runBlocking { db.relatedDao().upsertAnalysis(RelatedAnalysisEntity(recordId, AnalysisStatus.PENDING, null, "h", 0, null, 1, 1, null, null)) }
+
+        main { vm.setRelatedEnabled(true); vm.state.first { it.relatedStatus == RelatedThoughtsStatus.MODEL_NOT_DOWNLOADED } }
+        main { vm.downloadModels() }
+        runBlocking { models.awaitDownload() }
+        main { vm.state.first { it.relatedStatus == RelatedThoughtsStatus.READY } }
+        assertTrue(File(modelRoot, "test-model/v1/test.bin").exists())
+
+        main { vm.deleteModels(); vm.state.first { !it.settings.relatedEnabled && it.install is ModelInstallState.NotInstalled } }
+        assertEquals(RelatedThoughtsStatus.OFF, vm.state.value.relatedStatus)
+        assertTrue(!modelRoot.exists())
+        assertEquals(1, runBlocking { repo.observeRecords().first() }.size) // records stay
+        assertNotNull(runBlocking { db.relatedDao().analysis(recordId) }) // related analysis rows stay
+    }
+
+    @Test
+    fun relatedOffKeepsInstalledModels() {
+        val store = SettingsStore(prefs)
+        val models = installer()
+        val vm = vm { SettingsViewModel(repo, store, models) }
+        main { vm.state.first { it.loaded } }
+        assertEquals(StartResult.Started, models.startDownload())
+        runBlocking { models.awaitDownload() }
+        val s = main { vm.state.first { it.install is ModelInstallState.Ready } }
+        assertEquals(RelatedThoughtsStatus.OFF, s.relatedStatus) // OFF wins, files untouched
+        assertTrue(File(modelRoot, "test-model/v1/test.bin").exists())
     }
 
     // ── 카테고리 관리 ──

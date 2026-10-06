@@ -44,7 +44,10 @@
   - [ ] M6-4 UI 노출 (debug 가짜 결과로 확인): 저장 직후 grace window(1.5초 = 일반 저장 피드백 길이) 안에 결과가 있으면 `저장했어요` + jelly를 1.5초 다 보여주고 0.5초 연출 pause(`RELATED_NAV_DELAY_MS`) 뒤(결과 없으면 1.5초에 바로 복귀) Related Memories로 자동 이동(overlay에 `문득` 문구 · CTA 없음; Thread B: target만 rounded card, 과거 기록은 divider로 나뉜 thread item, 라벨 `이 생각에서`, 기록 최대 12줄, `RelatedMemoriesRoute(recordId)`) · Record Detail `이어지는 기록`(최대 4줄). Home은 시간 기반 `다시 만난 생각`만(semantic 카드 제거), Home `최근 기록` 본문은 기록 목록과 같은 최대 3줄. 구현됨(미커밋) — Mac 빌드 · 테스트 · 실기기 확인 후 체크.
     - 결정 (2026-10-05): UI는 pipeline version을 모른다 — active version은 repository / store 계층이 관리하고 조회 때 내부에서 사용. debug / fake 결과도 같은 경계. Home 카드 디자인은 실제 화면을 보며 결정.
   - [ ] M6-5 기능 상태 · Settings: DataStore(enabled · 제안 상태) · 모델 상태 machine · Settings `관련된 생각 찾기` ON/OFF · `AI 모델 삭제` · 10개 제안 sheet. (다운로드는 fake)
-  - [ ] M6-6 모델 다운로드 (e5 + Qwen 하나의 흐름): `ModelArtifact` · `ModelSource`(제공자 미정) · DownloadManager · sha256 검증 · 원자적 이동 · 삭제. `INTERNET` 권한과 Manifest 주석을 새 원칙으로.
+  - [~] M6-6 모델 다운로드 기반 (미커밋): `related/model` — `RelatedModels`(e5 + Qwen manifest) · `ModelInstaller`(noBackupFilesDir/models · `.part` 이어받기 · size + sha256 · marker · 원자적 rename · 삭제 · 복구) · `SemanticGate`(ON AND Ready) · Settings 상태 UX(모델 받기 · 진행률 · 준비됨 · AI 모델 삭제). 방식: in-app 다운로드(DownloadManager 아님 — 앱 내부 저장소에 직접 쓰고 복사 없이 rename).
+    - [ ] 모델 호스트 확정 → `ModelSource.Https` URL · HTTPS `ModelFetcher`(Range) 구현 · `INTERNET` + `ACCESS_NETWORK_STATE` 권한 · Manifest 주석
+    - [ ] e5 Android artifact(ONNX 변환 · tokenizer) 확정 → 파일명 · 크기 · sha256 (M6-8). 그 전까지 번들은 READY가 될 수 없음
+    - [ ] 모바일 데이터에서 "지금 받기" 동의(MVP는 Wi-Fi 전용) · 다운로드 취소 버튼
   - [ ] M6-7 local Qwen: llama.cpp JNI(NDK, arm64-v8a) · judge_v1 asset(sha 검사) · JSON schema · thinking off. 앱 안에서 frozen 157쌍 → PoC 제품 지표(Bad .25 · Good@5 .64 · F7 1/4)와 비교.
   - [ ] M6-8 local e5: ONNX 변환 · tokenizer · runtime. frozen 157쌍에서 Mac e5 run과 Top 30 순위 비교.
   - [ ] M6-9 WorkManager 연결: `RelatedWorker` · 실행 조건 · 발열 · 실행 예산 · 재시도. 실제 기기에서 저장 → 결과 노출까지 end-to-end (latency · 배터리 · RSS).
