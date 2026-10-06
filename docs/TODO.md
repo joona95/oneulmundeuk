@@ -2,7 +2,8 @@
 
 ## Before release (must)
 - [x] **App name**: `오늘문득` (M1.5) — `app_name`, splash intro.
-- [ ] **applicationId / package**: still the placeholder `app.placeholder.journal` — decide, then `scripts/rename-package.sh`; also `rootProject.name`.
+- [x] **applicationId / package**: `app.oneulmundeuk` (debug `app.oneulmundeuk.debug`), release signing via `~/.gradle/gradle.properties` — `docs/release-signing.md`. (`rootProject.name` stays `thoughts-app`, internal only.)
+- [ ] Play 출시 준비: upload key 생성 · Play App Signing에 release key를 app signing key로 등록 (`docs/release-signing.md`).
 - [ ] **Launcher icon**: the jelly dot is a placeholder; design the 오늘문득 icon (adaptive + monochrome).
 - [ ] **Data-protection milestone (personal records)**: records are currently stored unencrypted in app-private storage.
   - Evaluate SQLCipher (or equivalent) with a key held in Android Keystore; migration from the plain DB.

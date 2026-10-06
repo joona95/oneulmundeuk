@@ -18,3 +18,8 @@ experiments/android-qwen-poc/.build/
 *.gguf
 # experiments/modal-qwen-4b venv (modal client)
 experiments/modal-qwen-4b/.venv/
+
+# Signing secrets — never in the repo (docs/release-signing.md)
+*.jks
+*.keystore
+keystore.properties

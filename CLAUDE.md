@@ -6,7 +6,7 @@
 
 - **제품명은 `오늘문득`.** `Echo`는 내부 설계/작업용 가칭일 뿐이다. 사용자 UI, 리소스 문자열, 브랜드 요소에 절대 노출하지 않는다. 화면 title: Home은 page title 없이 Hero 질문이 title 역할, Records는 AppTopBar title `기록`(하단 navigation label도 `기록`), Explore는 page title 없이 Hero "과거의 나에게 물어보세요."가 title 역할, Settings는 page title `설정`.
 - 브랜드 핵심 경험: 기록 → 망각 → 재발견 → 연결 → 변화 인식. 표현 후보: `문득, 그때` · `문득, 예전의 생각이 떠올랐어요` · `다시 만난 생각`.
-- **applicationId / package 미정.** 현재 값 `app.placeholder.journal`은 임시값이다. `dev.juna.echo`, `dev.juna.thoughts` 같은 값으로 임의로 확정하지 않는다. 이름이 정해지면 `scripts/rename-package.sh <new.package>`로 바꾼다.
+- **applicationId = `app.oneulmundeuk`** (namespace 동일, debug는 `app.oneulmundeuk.debug`). Play 업로드 후 변경 불가. 실제 개인 기록은 release 서명 앱에만. signing secret · keystore는 repo에 두지 않는다 (`~/.gradle/gradle.properties`, `~/.keys/oneulmundeuk/`). Room schema 변경 규칙과 signing은 `docs/release-signing.md`.
 - **Local-first. 사용자 기록은 기기 밖으로 전송하지 않는다.** 원문 · 감정 · 카테고리 · 사진 · embedding · 판정 · 결과 · 사용 통계 · 식별자 모두. 인터넷은 AI 모델 등 정적 리소스 다운로드(고정 URL GET)에만 쓴다. 서버 · 로그인 · analytics 없음. `allowBackup=false`. (현재 Manifest에는 아직 `INTERNET` 권한이 없다 — 모델 다운로드 단계(M6-6)에서 추가)
 - **과한 추상화 금지.** UseCase / Mapper / domain layer를 추가하지 않는다. 구조는 `data`(Room + Repository) / `ui`(Compose + ViewModel) / `related` / `resurface` / `util`.
 - **Emotion은 stable key로 저장한다** (`calm`, `happy`, `excited`, `so_so`, `tired`, `anxious`, `sad`). ordinal이나 enum name으로 저장하지 않는다. `EmotionConverterTest`가 이를 고정한다.
@@ -21,7 +21,7 @@ DI는 수동 (`JournalApplication.container` → `AppContainer`).
 ## 구조
 
 ```
-app/src/main/java/app/placeholder/journal/
+app/src/main/java/app/oneulmundeuk/
   JournalApplication.kt   AppContainer (database, repository, relatedFinder, resurfacer)
   MainActivity.kt
   data/        model(Emotion, RecordWithCategory) · db(Entity, Dao, AppDatabase v2, Migrations, Converters, DefaultCategories, Related*: record_embedding · related_analysis · related_judgment) · RecordRepository

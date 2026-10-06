@@ -6,14 +6,25 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+/*
+ * Release signing (docs/release-signing.md). Secrets never live in this repo: they are read from Gradle properties,
+ * normally ~/.gradle/gradle.properties (user home, outside the repo). When any of the four is missing the release
+ * build is produced unsigned — `assembleRelease` still works (CI / other machines), it just cannot be installed.
+ */
+val releaseSigning = listOf(
+    "ONEULMUNDEUK_RELEASE_STORE_FILE",
+    "ONEULMUNDEUK_RELEASE_STORE_PASSWORD",
+    "ONEULMUNDEUK_RELEASE_KEY_ALIAS",
+    "ONEULMUNDEUK_RELEASE_KEY_PASSWORD",
+).associateWith { providers.gradleProperty(it).orNull }
+
 android {
-    // TODO(app-name): placeholder package — the app name / applicationId are not decided yet.
-    // Change both with scripts/rename-package.sh before any release or Play Console upload.
-    namespace = "app.placeholder.journal"
+    // Final identity (2026-10). applicationId can never change after Play upload; namespace = the Kotlin package.
+    namespace = "app.oneulmundeuk"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "app.placeholder.journal"
+        applicationId = "app.oneulmundeuk"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -21,8 +32,25 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (releaseSigning.values.all { !it.isNullOrBlank() }) {
+            create("release") {
+                storeFile = file(releaseSigning.getValue("ONEULMUNDEUK_RELEASE_STORE_FILE")!!.replaceFirst(Regex("^~"), System.getProperty("user.home")))
+                storePassword = releaseSigning.getValue("ONEULMUNDEUK_RELEASE_STORE_PASSWORD")
+                keyAlias = releaseSigning.getValue("ONEULMUNDEUK_RELEASE_KEY_ALIAS")
+                keyPassword = releaseSigning.getValue("ONEULMUNDEUK_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // app.oneulmundeuk.debug: a separate app for development / fake-AI testing. Real personal records live
+            // only in the release-signed app.oneulmundeuk (both can be installed side by side).
+            applicationIdSuffix = ".debug"
+        }
         release {
+            signingConfig = signingConfigs.findByName("release") // null → unsigned release
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

@@ -5,7 +5,7 @@ Status: M1 · M1.5 · M2 (Records/Calendar) · M3 (Home) done. M4 "문득, 그�
 Kotlin · Jetpack Compose · Material 3 · Room · Coroutines/Flow · Navigation Compose (type-safe).
 There is no server and no login. Every record stays on the device. The app has no `INTERNET` permission, and records are excluded from cloud backup and device transfer.
 
-> **The package is a placeholder.** `app.placeholder.journal` is used for both `namespace` and `applicationId` until the app name is decided. Rename it with `scripts/rename-package.sh <new.package>` before any release. The internal project name never appears in the UI.
+> **App identity:** `applicationId` / `namespace` = `app.oneulmundeuk` (debug build: `app.oneulmundeuk.debug`). Display name 오늘문득. Signing · data rules: `docs/release-signing.md`. The internal project name never appears in the UI.
 
 ## Open in Android Studio
 
@@ -25,7 +25,7 @@ From the command line:
 ## Structure (kept deliberately small)
 
 ```
-app/src/main/java/app/placeholder/journal/
+app/src/main/java/app/oneulmundeuk/
 ├─ JournalApplication.kt     AppContainer (manual DI: database, repository, relatedFinder, resurfacer)
 ├─ MainActivity.kt
 ├─ data/

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Product name. The internal project name is never shown in the UI. Package name is still a placeholder. -->
+    <!-- Product name. The internal project name is never shown in the UI. applicationId: app.oneulmundeuk (debug: app.oneulmundeuk.debug). -->
     <string name="app_name">오늘문득</string>
 </resources>
