@@ -45,6 +45,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.oneulmundeuk.resurface.ResurfacedRecord
 import app.oneulmundeuk.ui.components.CategoryTag
 import app.oneulmundeuk.ui.components.EmotionMarker
+import app.oneulmundeuk.ui.components.EmptyState
+import app.oneulmundeuk.ui.components.NoRecordsCopy
 import app.oneulmundeuk.ui.components.RecordCard
 import app.oneulmundeuk.ui.components.softGive
 import app.oneulmundeuk.ui.container
@@ -80,6 +82,13 @@ fun HomeScreen(
         ) {
             item(key = "write") { WriteToday(today = TimeFormat.monthDayWeekday(state.today), onClick = onWrite) }
 
+            if (!state.loading && state.noRecords) {
+                // No saved record (first run or after deleting them all): the same empty state as Records.
+                item(key = "no-records") {
+                    // 8 above (not the 32 section gap): with EmptyState's own 32 inset it reads as the input's follow-up.
+                    EmptyState(title = NoRecordsCopy.TITLE, body = NoRecordsCopy.BODY, modifier = Modifier.padding(top = t.spacing.xs))
+                }
+            }
             if (!state.loading) {
                 state.resurfaced?.let { resurfaced ->
                     item(key = "resurfaced-title") {

@@ -115,6 +115,12 @@ fun AppFab(onClick: () -> Unit, contentDescription: String, modifier: Modifier =
     }
 }
 
+/** "No saved record at all" copy — one source for Records (list) and Home, so both empty states stay identical. */
+object NoRecordsCopy {
+    const val TITLE = "아직 남긴 생각이 없어요"
+    const val BODY = "떠오르는 생각을 한 줄만 남겨도 괜찮아요."
+}
+
 @Composable
 fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
     val t = AppTheme.tokens

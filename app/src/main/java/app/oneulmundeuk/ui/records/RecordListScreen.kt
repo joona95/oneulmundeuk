@@ -29,6 +29,7 @@ import app.oneulmundeuk.ui.components.AppFab
 import app.oneulmundeuk.ui.components.AppTopBar
 import app.oneulmundeuk.ui.components.CategoryChips
 import app.oneulmundeuk.ui.components.EmptyState
+import app.oneulmundeuk.ui.components.NoRecordsCopy
 import app.oneulmundeuk.ui.components.RecordCard
 import app.oneulmundeuk.ui.container
 import app.oneulmundeuk.ui.theme.AppTheme
@@ -69,8 +70,8 @@ fun RecordListScreen(
                 state.loading -> Unit // keep the calm empty background
                 // First run, list view: the existing friendly empty state (nothing to switch or filter yet).
                 !state.hasAnyRecord && state.mode == RecordsViewMode.List -> EmptyState(
-                    title = "아직 남긴 생각이 없어요",
-                    body = "떠오르는 생각을 한 줄만 남겨도 괜찮아요.",
+                    title = NoRecordsCopy.TITLE,
+                    body = NoRecordsCopy.BODY,
                     modifier = Modifier.align(BiasAlignment(0f, -0.25f)).padding(horizontal = t.spacing.screenPadding),
                 )
                 // Fixed controls + scrolling content. The 목록/캘린더 switch and the filter used to be the
