@@ -18,6 +18,11 @@ experiments/android-qwen-poc/.build/
 *.gguf
 # experiments/modal-qwen-4b venv (modal client)
 experiments/modal-qwen-4b/.venv/
+# experiments/search: local search experiments, never committed
+experiments/search/
+
+# Local environment secrets
+.env
 
 # Signing secrets — never in the repo (docs/release-signing.md)
 *.jks
