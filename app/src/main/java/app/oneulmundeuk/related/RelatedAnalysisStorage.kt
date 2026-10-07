@@ -31,7 +31,11 @@ interface RelatedAnalysisStorage : EmbeddingStore {
     suspend fun fail(recordId: String, error: String, now: Long): Boolean
 }
 
-class RoomRelatedAnalysisStorage(private val db: AppDatabase) : RelatedAnalysisStorage {
+open class RoomRelatedAnalysisStorage(private val database: () -> AppDatabase) : RelatedAnalysisStorage {
+    constructor(db: AppDatabase) : this({ db })
+
+    /** Resolved on first use (the runtime is created at app start, the database lazily). */
+    protected val db: AppDatabase get() = database()
     private val dao get() = db.relatedDao()
 
     override suspend fun nextPendingId(): String? = dao.nextPending()?.recordId

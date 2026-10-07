@@ -17,7 +17,7 @@ import java.nio.LongBuffer
  * The ONNX graph already does mean pooling + L2 normalization, so the output IS the sentence embedding
  * (384 floats, cosine = dot product). This class only: prefix → [XlmrTokenizer] → input_ids / attention_mask → run.
  *
- * Loaded only by the production runtime (`E5RecordEmbeddingRuntime`) after `SemanticGate` allows it.
+ * Loaded only by the production runtime (`LocalRelatedRuntime`) after `SemanticGate` allows it.
  *
  * Prefixes are NOT one setting: the app talks to e5 through [textEmbedder] for an [E5Purpose], whose prefixes are
  * exactly the measured benchmark ones and whose [TextEmbedder.modelId] carries the purpose, so the embedding cache keeps

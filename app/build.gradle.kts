@@ -30,6 +30,24 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Qwen judge (M6-7): llama.cpp JNI, built for arm64-v8a only. This limits only what CMake builds — other ABIs
+        // still package everything else and simply have no libqwen_judge.so (semantic feature unavailable there).
+        externalNativeBuild {
+            cmake {
+                abiFilters += "arm64-v8a"
+                // optimized kernels in every variant (a Debug ggml build is unusably slow); same as the PoC build
+                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_PLATFORM=android-28", "-DANDROID_STL=c++_static")
+            }
+        }
+    }
+
+    // NDK of the PoC build (experiments/android-qwen-poc/.build/install-android/BUILD_INFO.txt)
+    ndkVersion = "30.0.16248370"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {

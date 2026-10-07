@@ -27,6 +27,7 @@ class RelatedAnalyzer(
     private val embedder: TextEmbedder,
     private val judge: RelatedValueJudge,
     private val now: () -> Long = System::currentTimeMillis,
+    private val embedBudget: Int = RelatedPolicy.EMBED_BUDGET_PER_ANALYSIS,
 ) {
     val pipelineVersion: String = RelatedPipeline.version(embedder, judge)
     private val embeddings = RecordEmbeddingCache(storage, embedder, now)
@@ -47,7 +48,7 @@ class RelatedAnalyzer(
             val earlier = storage.recordsBefore(target).filter { it.id != target.id && it.createdAt < target.createdAt }
             val hashes = earlier.associate { it.id to RelatedText.hash(it.text) }
             val texts = earlier.associate { it.id to it.text }
-            val candidates = rankCandidates(targetVector, earlier.map { it.id to vectorFor(it, hashes.getValue(it.id), stats) })
+            val candidates = rankCandidates(targetVector, candidatePool(earlier, hashes, stats))
 
             val cached = storage.judgments(recordId)
                 .filter { it.pipelineVersion == pipelineVersion && it.targetHash == targetHash }
@@ -97,6 +98,23 @@ class RelatedAnalyzer(
             storage.fail(recordId, "${e::class.simpleName}: ${e.message}", now())
             AnalysisOutcome.Failed(recordId, e, stats)
         }
+    }
+
+    /**
+     * Earlier records with a vector: every cached one, plus missing ones embedded newest first (createdAt DESC, id)
+     * up to [embedBudget]. The ranking itself ([rankCandidates]) orders by similarity, then id — deterministic.
+     */
+    private suspend fun candidatePool(earlier: List<RecordTextRow>, hashes: Map<String, String>, stats: AnalysisStats): List<Pair<String, FloatArray>> {
+        val pool = ArrayList<Pair<String, FloatArray>>(earlier.size)
+        val missing = ArrayList<RecordTextRow>()
+        for (r in earlier) {
+            val cached = embeddings.cached(r, hashes.getValue(r.id))
+            if (cached != null) { stats.embedHits++; pool += r.id to cached } else missing += r
+        }
+        missing.sortedWith(compareByDescending<RecordTextRow> { it.createdAt }.thenBy { it.id })
+            .take(embedBudget)
+            .forEach { pool += it.id to vectorFor(it, hashes.getValue(it.id), stats) }
+        return pool
     }
 
     /** Embedding cache ([RecordEmbeddingCache]): reuse for the same space + text version; otherwise embed and store. */

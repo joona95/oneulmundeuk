@@ -75,6 +75,14 @@ interface RelatedDao {
     @Query("UPDATE related_analysis SET status = 'PENDING', updated_at = :now WHERE status = 'RUNNING'")
     suspend fun resetRunningToPending(now: Long): Int
 
+    /**
+     * Retry after a runtime error: FAILED rows with fewer than [maxAttempts] attempts → PENDING. attempts and the original
+     * queue time are kept (an edit's `requeue` resets attempts instead). Rows at the limit stay FAILED until the text
+     * changes (an edit re-queues it with attempts 0).
+     */
+    @Query("UPDATE related_analysis SET status = 'PENDING', updated_at = :now WHERE status = 'FAILED' AND attempts < :maxAttempts")
+    suspend fun requeueFailed(maxAttempts: Int, now: Long): Int
+
     /** PENDING → RUNNING for [pipelineVersion] / [textHash]. 0 when the row is not PENDING (nothing to start). */
     @Query(
         """

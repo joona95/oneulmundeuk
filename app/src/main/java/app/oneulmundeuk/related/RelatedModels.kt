@@ -46,11 +46,21 @@ sealed interface JudgeResult {
 
 /** Version of everything that decides a result. Stored on analyses / judgments; any change re-analyses lazily. */
 object RelatedPipeline {
-    /** Bump when the M5 policy in [RelatedPolicy] / [selectWorthShowing] / [rankCandidates] changes. */
-    const val POLICY = "m5-label2-top30-max5"
+    /**
+     * Bump when the M5 policy in [RelatedPolicy] / [selectWorthShowing] / [rankCandidates] changes.
+     * "eb100" = candidate pool embeds at most [RelatedPolicy.EMBED_BUDGET_PER_ANALYSIS] missing records per analysis (M6-7).
+     */
+    const val POLICY = "m5-label2-top30-max5-eb100"
 
-    fun version(embedder: TextEmbedder, judge: RelatedValueJudge): String =
-        "$POLICY|e=${embedder.modelId}|j=${judge.modelId}|${RelatedText.VERSION}"
+    fun version(embedder: TextEmbedder, judge: RelatedValueJudge): String = version(embedder.modelId, judge.modelId)
+
+    /**
+     * Identity of a stored result. e = embedding space (decides candidates · similarity · order), j = judge (model file,
+     * prompt, runtime, generation settings — decides labels). The embedding cache itself is keyed by e only
+     * (`record_embedding.model_id`); judgments / analyses / shown results by this whole version.
+     */
+    fun version(embedderModelId: String, judgeModelId: String): String =
+        "$POLICY|e=$embedderModelId|j=$judgeModelId|${RelatedText.VERSION}"
 }
 
 /** `record_embedding.vector`: float32 little-endian, [FloatArray.size] × 4 bytes. Model-agnostic (any dimension). */

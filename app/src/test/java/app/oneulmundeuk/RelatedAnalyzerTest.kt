@@ -7,6 +7,7 @@ import app.oneulmundeuk.related.EmbeddingCodec
 import app.oneulmundeuk.related.JudgeResult
 import app.oneulmundeuk.related.RelatedAnalyzer
 import app.oneulmundeuk.related.RelatedPipeline
+import app.oneulmundeuk.related.RelatedPolicy
 import app.oneulmundeuk.related.rankCandidates
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
@@ -240,5 +241,30 @@ class RelatedAnalyzerTest {
         assertEquals(0x00.toByte(), bytes[0]); assertEquals(0x3e.toByte(), bytes[3]) // 0.25f little-endian = 00 00 80 3E
         val version = RelatedPipeline.version(FakeEmbedder("e5-x") { floatArrayOf() }, FakeJudge("qwen-y") { _, _ -> JudgeResult.Label(0) })
         assertTrue("e=e5-x" in version && "j=qwen-y" in version && RelatedPipeline.POLICY in version)
+    }
+
+    /** M6-7 candidate budget: cached records always count; missing ones are embedded newest first, ties by id. */
+    @Test
+    fun candidatePoolEmbedsAtMostTheBudgetNewestFirst() = runTest {
+        storage.add("old", "old s=0.99 l=2", 1)
+        storage.add("b", "b s=0.5 l=2", 5)
+        storage.add("a", "a s=0.5 l=2", 5) // same time as b → id order
+        storage.add("new", "new s=0.4 l=2", 9)
+        storage.add("now", "지금", 10)
+        storage.enqueue("now")
+        val budgeted = RelatedAnalyzer(storage, embedder, judge, now = { clock++ }, embedBudget = 3)
+        val out = budgeted.analyze("now") as AnalysisOutcome.Done
+        assertEquals(listOf("지금", "new s=0.4 l=2", "a s=0.5 l=2", "b s=0.5 l=2"), embedder.calls) // "old" over budget
+        assertEquals(listOf("a", "b", "new"), out.resultIds) // similarity DESC, tie a < b
+
+        // next analysis: the cached three are free, the budget reaches "old"
+        storage.add("next", "다음", 11)
+        storage.enqueue("next")
+        embedder.calls.clear()
+        val next = budgeted.analyze("next") as AnalysisOutcome.Done
+        assertEquals(listOf("다음", "old s=0.99 l=2"), embedder.calls)
+        assertEquals("old", next.resultIds.first())
+        assertEquals(RelatedPolicy.EMBED_BUDGET_PER_ANALYSIS, 100)
+        assertTrue("eb100" in RelatedPipeline.POLICY)
     }
 }

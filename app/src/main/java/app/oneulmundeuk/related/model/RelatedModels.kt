@@ -91,8 +91,8 @@ object RelatedModels {
 
 /**
  * The one place a production semantic runtime asks "may I run inference?": 관련된 생각 ON AND the model bundle Ready.
- * `E5RecordEmbeddingRuntime` (via `AppContainer.semanticInferenceAllowed`) checks it before queueing, loading or
- * running e5; the debug fake does not (a test tool, not a model). TODO(M6-7/9): the Qwen judge / worker must too.
+ * `LocalRelatedRuntime` (via `AppContainer.semanticInferenceAllowed`) checks it before queueing, loading or running
+ * e5 / Qwen; the debug fake does not (a test tool, not a model).
  */
 object SemanticGate {
     fun allows(relatedEnabled: Boolean, install: ModelInstallState): Boolean =

@@ -133,6 +133,15 @@ backlog (기능을 처음 켰을 때 · 버전이 바뀌었을 때): **최신 �
   - 켜기(fast): `adb shell run-as app.oneulmundeuk.debug touch files/debug_related_on && adb shell am force-stop app.oneulmundeuk.debug` 후 앱 실행. slow: `adb shell "run-as app.oneulmundeuk.debug sh -c 'echo slow > files/debug_related_on'"` + force-stop. 끄기: `adb shell run-as app.oneulmundeuk.debug rm files/debug_related_on` + force-stop.
 - **M6-9로 미룸 — 늦게 끝난 결과(late result)**: grace window 뒤에 DONE이 된 결과를 사용자에게 어떻게 다시 알려줄지는 정하지 않았다. 후보: local notification / 다음 앱 진입 때 한 번만 보여주기(one-shot) / 다른 조용한 표시(inbox · indicator). Home 상시 semantic 카드는 쓰지 않는다. 그 전까지 늦은 결과는 Detail `이어지는 기록`에서만 보인다.
 
+### M6-7 구현 메모 (Qwen judge production 연결, 미커밋)
+
+- **runtime**: llama.cpp b10456(f275595, PoC와 같은 commit)을 수정 없이 `third_party/llama.cpp` submodule로 두고, `app/src/main/cpp/qwen_judge_jni.cpp`(작은 JNI wrapper)가 llama-server와 같은 `common` 함수로 요청을 처리한다: GGUF 내장 jinja template + `enable_thinking=false` kwarg · `json_schema`(llm_judge.SCHEMA) → template grammar · temp 0 · seed 7 · ctx 2048 · n_predict 192 · stop 문자열 · EOS · `common_chat_parse`로 content 추출 · 같은 현재 기록이 이어질 때 prompt prefix KV 재사용(`cache_prompt`). build flags도 PoC와 같다(CPU only · `-march=armv8.6-a+dotprod+i8mm` · OpenMP/llamafile/OpenSSL off · android-28). thread 수는 서버 기본값(물리 core)과 프로세스 허용 CPU(`sched_getaffinity`) 중 작은 값이고, llama-server처럼 지속 threadpool을 context에 붙인다 — 실기기 instrumentation 앱은 `Cpus_allowed_list 0-5`라 8 thread spin으로 pair당 약 180–230 s까지 느려졌고, 수정 후 6 thread · pair 5–13 s(label PoC와 4/4 일치). arm64-v8a만 빌드하고, CPU에 asimddp · i8mm · bf16이 없거나 library가 없으면 library를 로드하지 않고 semantic 기능만 unavailable(gate 닫힘).
+- **judge**: `assets/judge_v1.txt`는 experiments 원본과 byte 동일(sha256 검사, 다르면 load 실패). 출력 검증은 `strong_judge.validate`와 같은 규칙(잘림 · JSON 오류 · label이 0..2 int가 아님 · 빈 reason → 그 쌍 FAILED). context에 안 들어가는 쌍(아주 긴 두 기록)도 그 쌍만 FAILED. native 오류는 예외 → 분석 FAILED.
+- **pipeline version** = `POLICY|e=<e5 RELATED space>|j=<QwenJudge.MODEL_ID>|t1`. e5 space는 후보 · similarity · 순서를, judge id(GGUF sha · prompt sha · llama.cpp 버전 · 생성 조건)는 label을 정한다. embedding cache는 e5 space만 key로 쓰고(M6-9), 판정 · 분석 · 노출은 전체 version으로 구분한다. production `activePipelineVersion`은 모델을 로드하지 않아도 정해지고, gate가 닫혀도 이 version의 DONE 결과는 계속 보인다(§3 "기능 OFF: 분석만 멈춤").
+- **실행** (`LocalRelatedRuntime`, WorkManager 전): gate = SemanticGate(ON · Ready) AND native 지원. 저장 → `RelatedInvalidator`가 PENDING → `onRecordsChanged` → pass 1회(mutex로 직렬, Qwen 동시 inference 없음): 시작 때 FAILED(attempts < 3) 재대기 → `RelatedAnalyzer.runNext()` 반복 → 끝나면 e5 · Qwen close(실패해도). runtime 오류는 그 분석 FAILED 후 pass 종료(다음 저장 · 앱 시작 때 재시도). 앱 시작 때 RUNNING → PENDING. 프로세스가 살아 있는 동안만 진행한다.
+- **후보 예산**: M5는 모든 과거 기록을 순위에 넣었다(embedding 미리 계산). 앱에서는 분석 1회가 새로 계산하는 e5 embedding을 100개(`RelatedPolicy.EMBED_BUDGET_PER_ANALYSIS`)로 제한한다 — cache된 기록은 모두 후보, 없는 기록은 최신순(동률 id)으로 100개까지, 나머지는 다음 분석들에서 cache가 채워지며 들어온다. 정책 id에 `eb100`.
+- **저장 직후**: M6-4 grace window(1500ms) 그대로. 실제 Qwen은 Top 30에 약 100 s라 대부분 window 밖 → 평소 저장 종료, 결과는 Detail `이어지는 기록`에서. (후보가 없으면 DONE 0개 → 이동 없음.)
+
 ## 4. background inference lifecycle
 
 | 항목 | 원칙 |

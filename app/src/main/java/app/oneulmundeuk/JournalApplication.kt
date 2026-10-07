@@ -38,8 +38,8 @@ import app.oneulmundeuk.search.SemanticSearch
 class AppContainer(app: Application) {
     val database: AppDatabase by lazy { AppDatabase.create(app) }
     /**
-     * Per build type (src/debug, src/release). Release (and debug without the flag file): the real runtime — e5 record
-     * embeddings once [semanticInferenceAllowed]; no results shown yet. Debug flag file: fake models (M6-4 debug fake).
+     * Per build type (src/debug, src/release). Release (and debug without the flag file): the real local pipeline
+     * (e5 + Qwen judge_v1) once [semanticInferenceAllowed]. Debug flag file: fake models (M6-4 debug fake).
      */
     val relatedRuntime: RelatedRuntime by lazy {
         createRelatedRuntime(
@@ -49,6 +49,7 @@ class AppContainer(app: Application) {
                 gate = semanticInferenceAllowed,
                 refreshModels = { modelInstaller.refresh() },
                 verifiedFile = modelInstaller::verifiedFile,
+                readAsset = { name -> app.assets.open(name).use { it.readBytes() } },
                 scope = appScope,
             ),
         )

@@ -5,12 +5,12 @@ package app.oneulmundeuk.related
  * What this build can do for related records. Chosen per build type by `createRelatedRuntime` (src/debug, src/release),
  * so `main` never references a model or a fake.
  *
- * - release (M6-9): `productionRelatedRuntime` → [E5RecordEmbeddingRuntime] — behind `SemanticGate`, real e5 record
- *   embeddings for queued records; no judge yet, so nothing is shown. Gate closed = nothing queued / loaded / run.
+ * - release (M6-7/9): `productionRelatedRuntime` → [LocalRelatedRuntime] — behind `SemanticGate`, the real pipeline
+ *   (e5 RELATED + Qwen judge_v1, in-process, serialised). Gate closed = nothing queued / loaded / run.
  * - debug: the same, or with a flag file `DebugRelatedRuntime` — deterministic fake models through the real analyzer /
  *   Room / store.
  * - [NoRelatedRuntime]: does nothing at all (tests).
- * - Next: Qwen judge + `RelatedAnalyzer` drain (M6-7 / M6-9 worker), Explore e5 (`E5Purpose.EXPLORE`).
+ * - Next: WorkManager worker (execution budget · thermal), first-activation backfill, Explore e5 (`E5Purpose.EXPLORE`).
  */
 interface RelatedRuntime {
     /** Version whose results are shown (`RelatedStore`). Null = show nothing. */

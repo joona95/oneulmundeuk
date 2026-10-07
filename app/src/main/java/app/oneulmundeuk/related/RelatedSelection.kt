@@ -11,6 +11,15 @@ object RelatedPolicy {
     /** e5 candidates handed to the judge (all earlier records when fewer). */
     const val CANDIDATE_LIMIT = 30
 
+    /**
+     * New e5 embeddings one analysis may compute for its candidate pool (M6-7). Cached earlier records are always in
+     * the pool; missing ones are embedded newest first up to this many, the rest join later analyses as the cache
+     * fills. Not an M5 value (M5 ranked all records with precomputed embeddings): a bound so one save never embeds an
+     * unbounded history — on device ≈ 13 ms per typical record (175 ms at 512 tokens), so ≈ 1.3–18 s at most, small
+     * next to Top 30 Qwen judgments (≈ 3.3 s each).
+     */
+    const val EMBED_BUDGET_PER_ANALYSIS = 100
+
     /** Shown at most (never padded; 0 is a normal answer). */
     const val MAX_RESULTS = 5
 
