@@ -11,7 +11,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Local-first store.
  * v1 = records + categories. v2 (M6-2, [MIGRATION_1_2]) = + related-record tables (record_embedding,
  * related_analysis, related_judgment), all CASCADE-deleted with their record.
- * v3 ([MIGRATION_2_3]) = categories.archived_at (category "삭제" is an archive, never a DELETE). No destructive migration.
+ * v3 ([MIGRATION_2_3]) = categories.archived_at (category "삭제" is an archive, never a DELETE).
+ * v4 ([MIGRATION_3_4], M6-9) = record_embedding keyed by (record_id, model_id): one embedding per embedding space.
+ * No destructive migration.
  *
  * TODO(data-protection milestone, before release): personal records are stored unencrypted for now.
  *  Evaluate SQLCipher (or equivalent) with a Keystore-held key, encrypted export/backup, and app lock.
@@ -24,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RelatedAnalysisEntity::class,
         RelatedJudgmentEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(EmotionConverter::class)
@@ -38,7 +40,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(SEED_DEFAULT_CATEGORIES)
                 .addCallback(ENFORCE_FOREIGN_KEYS)
                 .build()

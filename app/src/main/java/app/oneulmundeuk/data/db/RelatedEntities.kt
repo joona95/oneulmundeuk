@@ -13,15 +13,21 @@ import androidx.room.PrimaryKey
  * Text versions are `RelatedText.hash(text)` values; a row whose hash differs from the current text is stale.
  */
 
-/** e5 embedding of one record (M6-3 fills it). Valid only while [textHash] and [modelId] match the current ones. */
+/**
+ * Embedding of one record in one embedding space. [modelId] = the space: model artifact + how the record text is
+ * prepared for it (e5: purpose → prefix, e.g. Related "query: " vs Explore "passage: "), so one record can hold one
+ * row per space (v4: primary key record_id + model_id) and a vector is only ever reused for the same space.
+ * Valid only while [textHash] matches the current text.
+ */
 @Entity(
     tableName = "record_embedding",
+    primaryKeys = ["record_id", "model_id"],
     foreignKeys = [
         ForeignKey(entity = RecordEntity::class, parentColumns = ["id"], childColumns = ["record_id"], onDelete = ForeignKey.CASCADE),
     ],
 )
 data class RecordEmbeddingEntity(
-    @PrimaryKey @ColumnInfo(name = "record_id") val recordId: String,
+    @ColumnInfo(name = "record_id") val recordId: String,
     @ColumnInfo(name = "model_id") val modelId: String,
     @ColumnInfo(name = "text_hash") val textHash: String,
     val dim: Int,
@@ -34,7 +40,7 @@ data class RecordEmbeddingEntity(
         modelId == other.modelId && textHash == other.textHash && dim == other.dim && updatedAt == other.updatedAt &&
         vector.contentEquals(other.vector)
 
-    override fun hashCode(): Int = recordId.hashCode()
+    override fun hashCode(): Int = 31 * recordId.hashCode() + modelId.hashCode()
 }
 
 /**

@@ -17,24 +17,23 @@ import java.nio.LongBuffer
  * The ONNX graph already does mean pooling + L2 normalization, so the output IS the sentence embedding
  * (384 floats, cosine = dot product). This class only: prefix → [XlmrTokenizer] → input_ids / attention_mask → run.
  *
- * NOT wired into the app yet (M6-8 device check only): release keeps NoRelatedRuntime, debug keeps its fake, nothing
- * here is created by AppContainer. A future runtime must check `SemanticGate` before [load].
+ * Loaded only by the production runtime (`E5RecordEmbeddingRuntime`) after `SemanticGate` allows it.
  *
- * Prefixes follow the M5 / S1 benchmark: Related compared records with "query: " on both sides; Explore asked with
- * "query: " against records with "passage: ". [embed] (records) uses [recordPrefix] — which one the shared record
- * embedding cache uses is decided when the runtime is wired (TODO(M6-9)); the default keeps the M5 Related setting.
+ * Prefixes are NOT one setting: the app talks to e5 through [textEmbedder] for an [E5Purpose], whose prefixes are
+ * exactly the measured benchmark ones and whose [TextEmbedder.modelId] carries the purpose, so the embedding cache keeps
+ * Related and Explore vectors apart.
  */
 class E5Embedder private constructor(
     private val env: OrtEnvironment,
     private val session: OrtSession,
     private val tokenizer: XlmrTokenizer,
-    private val recordPrefix: String,
-) : TextEmbedder, Closeable {
-    override val modelId: String = MODEL_ID
-
-    override suspend fun embed(text: String): FloatArray = embedWithPrefix(recordPrefix, text)
-
-    override suspend fun embedQuery(query: String): FloatArray = embedWithPrefix(QUERY, query)
+) : Closeable {
+    /** e5 for one benchmark setting: records and questions get [purpose]'s prefixes; its own cache space. */
+    fun textEmbedder(purpose: E5Purpose): TextEmbedder = object : TextEmbedder {
+        override val modelId: String = modelIdFor(purpose)
+        override suspend fun embed(text: String): FloatArray = embedWithPrefix(purpose.recordPrefix, text)
+        override suspend fun embedQuery(query: String): FloatArray = embedWithPrefix(purpose.queryPrefix, query)
+    }
 
     suspend fun embedWithPrefix(prefix: String, text: String): FloatArray =
         withContext(Dispatchers.Default) { embedIds(tokenizer.encode(prefix + text)) }
@@ -61,16 +60,19 @@ class E5Embedder private constructor(
     override fun close() = session.close()
 
     companion object {
-        /** Identifies stored embeddings: a different artifact version gives (slightly) different vectors. */
+        /** The model artifact (a different artifact version gives slightly different vectors). */
         val MODEL_ID: String = "${RelatedModels.E5.id}@${RelatedModels.E5.version}"
         const val DIM = 384
         const val QUERY = "query: "
         const val PASSAGE = "passage: "
+
+        /** Embedding space = artifact + purpose (prefix policy). Stored in `record_embedding.model_id` and pipeline versions. */
+        fun modelIdFor(purpose: E5Purpose): String = "$MODEL_ID|${purpose.key}"
         private const val INPUT_IDS = "input_ids"
         private const val ATTENTION_MASK = "attention_mask"
 
         /** Loads both artifacts (blocking, seconds — call off the main thread). Throws if either is missing / invalid. */
-        fun load(modelFile: File, tokenizerFile: File, recordPrefix: String = QUERY): E5Embedder {
+        fun load(modelFile: File, tokenizerFile: File): E5Embedder {
             val tokenizer = tokenizerFile.bufferedReader(Charsets.UTF_8).useLines { XlmrTokenizer.load(it) }
             val env = OrtEnvironment.getEnvironment()
             val options = OrtSession.SessionOptions().apply {
@@ -80,7 +82,7 @@ class E5Embedder private constructor(
                 addConfigEntry("mlas.disable_kleidiai", "1")
             }
             val session = env.createSession(modelFile.absolutePath, options)
-            return E5Embedder(env, session, tokenizer, recordPrefix)
+            return E5Embedder(env, session, tokenizer)
         }
     }
 }

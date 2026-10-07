@@ -34,11 +34,11 @@ class ExploreSearchTest {
     private class MemoryStorage : SearchStorage {
         val records = linkedMapOf<String, RecordTextRow>()
         val categories = mutableMapOf<String, String>()
-        val embeddings = mutableMapOf<String, RecordEmbeddingEntity>()
+        val embeddings = mutableMapOf<Pair<String, String>, RecordEmbeddingEntity>()
         override suspend fun allRecords() = records.values.toList()
         override suspend fun recordIdsInCategory(categoryId: String) = categories.filterValues { it == categoryId }.keys.toList()
-        override suspend fun embedding(recordId: String) = embeddings[recordId]
-        override suspend fun saveEmbedding(embedding: RecordEmbeddingEntity) { embeddings[embedding.recordId] = embedding }
+        override suspend fun embedding(recordId: String, modelId: String) = embeddings[recordId to modelId]
+        override suspend fun saveEmbedding(embedding: RecordEmbeddingEntity) { embeddings[embedding.recordId to embedding.modelId] = embedding }
     }
 
     /** "s=0.80" in a text → cosine ≈ 0.80 to any question (vector (s, √(1-s²)) vs (1, 0)). Records the texts it embeds. */

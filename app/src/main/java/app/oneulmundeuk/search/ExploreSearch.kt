@@ -3,7 +3,8 @@ package app.oneulmundeuk.search
 import app.oneulmundeuk.data.db.AppDatabase
 import app.oneulmundeuk.data.db.RecordEmbeddingEntity
 import app.oneulmundeuk.data.db.RecordTextRow
-import app.oneulmundeuk.related.EmbeddingCodec
+import app.oneulmundeuk.related.EmbeddingStore
+import app.oneulmundeuk.related.RecordEmbeddingCache
 import app.oneulmundeuk.related.RelatedText
 import app.oneulmundeuk.related.TextEmbedder
 import app.oneulmundeuk.related.rankCandidates
@@ -33,19 +34,20 @@ fun withCategoryHint(ranked: List<String>, inCategory: Set<String>, limit: Int =
     return (head + ranked.filterNot { it in head }).take(limit)
 }
 
-/** What search needs from storage: every record + the shared embedding cache (same table as Related). */
-interface SearchStorage {
+/**
+ * What search needs from storage: every record + the embedding table (same table as Related; rows are per embedding
+ * space, so Explore's record vectors — e5 "passage: " — never mix with Related's "query: " ones).
+ */
+interface SearchStorage : EmbeddingStore {
     suspend fun allRecords(): List<RecordTextRow>
     suspend fun recordIdsInCategory(categoryId: String): List<String>
-    suspend fun embedding(recordId: String): RecordEmbeddingEntity?
-    suspend fun saveEmbedding(embedding: RecordEmbeddingEntity)
 }
 
 class RoomSearchStorage(private val db: AppDatabase) : SearchStorage {
     private val dao get() = db.relatedDao()
     override suspend fun allRecords() = dao.allRecordTexts()
     override suspend fun recordIdsInCategory(categoryId: String) = dao.recordIdsInCategory(categoryId)
-    override suspend fun embedding(recordId: String) = dao.embedding(recordId)
+    override suspend fun embedding(recordId: String, modelId: String) = dao.embedding(recordId, modelId)
     override suspend fun saveEmbedding(embedding: RecordEmbeddingEntity) = dao.upsertEmbedding(embedding)
 }
 
@@ -100,15 +102,7 @@ class ExploreSearch(
 
     private fun dateOf(r: RecordTextRow): LocalDate = TimeFormat.dayKey(r.createdAt, zone)
 
-    /** Same embedding cache and validity rule as `RelatedAnalyzer` (model id + text version + size). */
-    private suspend fun vectorFor(embedder: TextEmbedder, record: RecordTextRow): FloatArray {
-        val hash = RelatedText.hash(record.text)
-        val stored = storage.embedding(record.id)
-        if (stored != null && stored.modelId == embedder.modelId && stored.textHash == hash && stored.vector.size == stored.dim * 4) {
-            return EmbeddingCodec.decode(stored.vector, stored.dim)
-        }
-        val vector = embedder.embed(record.text)
-        storage.saveEmbedding(RecordEmbeddingEntity(record.id, embedder.modelId, hash, vector.size, EmbeddingCodec.encode(vector), now()))
-        return vector
-    }
+    /** Same cache rule as `RelatedAnalyzer` ([RecordEmbeddingCache]), in this embedder's own space ([TextEmbedder.modelId]). */
+    private suspend fun vectorFor(embedder: TextEmbedder, record: RecordTextRow): FloatArray =
+        RecordEmbeddingCache(storage, embedder, now).vectorFor(record)
 }

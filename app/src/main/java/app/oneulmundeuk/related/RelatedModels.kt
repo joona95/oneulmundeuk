@@ -9,7 +9,10 @@ import java.nio.ByteOrder
  * that M6-7 / M6-8 plug in. M6-3 uses deterministic fakes only.
  */
 
-/** e5 role: text → embedding. [modelId] identifies the model + preprocessing; changing it invalidates embeddings. */
+/**
+ * e5 role: text → embedding. [modelId] identifies the embedding space — model + preprocessing (for e5 the purpose /
+ * prefix policy, `E5Purpose`). It is the cache key of `record_embedding`: another value never reuses a stored vector.
+ */
 interface TextEmbedder {
     val modelId: String
 
@@ -17,8 +20,8 @@ interface TextEmbedder {
     suspend fun embed(text: String): FloatArray
 
     /**
-     * A search question (Explore), compared against [embed]ded records. e5 implementations add their "query: " prefix
-     * here ("passage: " / record text in [embed]); a model without roles can keep this default.
+     * A search question (Explore), compared against [embed]ded records of the same embedder. e5 adds its purpose's
+     * query prefix here and its record prefix in [embed]; a model without roles can keep this default.
      */
     suspend fun embedQuery(query: String): FloatArray = embed(query)
 }

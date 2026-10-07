@@ -23,7 +23,8 @@ import kotlin.math.sqrt
  * Off by default. On = the file `files/debug_related_on` exists when the app process starts:
  *   adb shell run-as app.oneulmundeuk.debug touch files/debug_related_on
  *   adb shell am force-stop app.oneulmundeuk.debug   (then open the app again)
- * Off: `rm` the same file + force-stop. Results stay in Room but are hidden (the active version becomes null).
+ * Off: `rm` the same file + force-stop. The app then uses the real runtime (`productionRelatedRuntime`); fake results
+ * stay in Room but are hidden (another pipeline version), fake embeddings stay in their own space ("debug-fake-…").
  *
  * Fake model latency (DEBUG ONLY — not the product's timing; the save grace window is `RelatedGrace.WINDOW_MS`):
  *   empty flag file → fast UI-test mode (5 ms per judged pair, and the first judged — i.e. most similar — candidate of
@@ -98,6 +99,8 @@ class DebugRelatedRuntime(
 
     companion object {
         const val FLAG_FILE = "debug_related_on"
+
+        fun isOn(app: Application): Boolean = File(app.filesDir, FLAG_FILE).exists()
         private const val TAG = "DebugRelated"
         private const val BACKFILL = 10
         private const val MAX_RUNS_PER_DRAIN = 200

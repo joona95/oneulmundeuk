@@ -2,7 +2,6 @@ package app.oneulmundeuk.related
 
 import app.oneulmundeuk.data.db.AnalysisStatus
 import app.oneulmundeuk.data.db.JudgmentStatus
-import app.oneulmundeuk.data.db.RecordEmbeddingEntity
 import app.oneulmundeuk.data.db.RecordTextRow
 import app.oneulmundeuk.data.db.RelatedJudgmentEntity
 import kotlinx.coroutines.CancellationException
@@ -30,6 +29,7 @@ class RelatedAnalyzer(
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     val pipelineVersion: String = RelatedPipeline.version(embedder, judge)
+    private val embeddings = RecordEmbeddingCache(storage, embedder, now)
 
     /** Analyses the oldest PENDING record, or returns null when the queue is empty. */
     suspend fun runNext(): AnalysisOutcome? = storage.nextPendingId()?.let { analyze(it) }
@@ -99,20 +99,9 @@ class RelatedAnalyzer(
         }
     }
 
-    /** Embedding cache: reuse when made for the current text by this embedder; otherwise embed and store. */
-    private suspend fun vectorFor(record: RecordTextRow, textHash: String, stats: AnalysisStats): FloatArray {
-        val stored = storage.embedding(record.id)
-        if (stored != null && stored.modelId == embedder.modelId && stored.textHash == textHash && stored.vector.size == stored.dim * 4) {
-            stats.embedHits++
-            return EmbeddingCodec.decode(stored.vector, stored.dim)
-        }
-        stats.embedCalls++
-        val vector = embedder.embed(record.text)
-        storage.saveEmbedding(
-            RecordEmbeddingEntity(record.id, embedder.modelId, textHash, vector.size, EmbeddingCodec.encode(vector), now()),
-        )
-        return vector
-    }
+    /** Embedding cache ([RecordEmbeddingCache]): reuse for the same space + text version; otherwise embed and store. */
+    private suspend fun vectorFor(record: RecordTextRow, textHash: String, stats: AnalysisStats): FloatArray =
+        embeddings.vectorFor(record, textHash, onMiss = { stats.embedCalls++ }, onHit = { stats.embedHits++ })
 }
 
 /** Counters for one run (tests / logs). */

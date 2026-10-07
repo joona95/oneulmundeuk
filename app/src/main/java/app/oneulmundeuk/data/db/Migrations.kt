@@ -43,3 +43,25 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("ALTER TABLE `categories` ADD COLUMN `archived_at` INTEGER")
     }
 }
+
+/**
+ * v3 → v4 (M6-9): `record_embedding` keyed by (record_id, model_id) instead of record_id, so the same record can keep
+ * an embedding per embedding space (e5 Related "query: " and e5 Explore "passage: " are different vectors). SQLite cannot
+ * change a primary key in place: new table → copy every row as is (they stay valid: model_id is part of the old rows
+ * too) → drop → rename. Nothing else is touched. SQL mirrors what Room generates for the v4 entity (MigrationTest).
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `record_embedding_new` (`record_id` TEXT NOT NULL, `model_id` TEXT NOT NULL, " +
+                "`text_hash` TEXT NOT NULL, `dim` INTEGER NOT NULL, `vector` BLOB NOT NULL, `updated_at` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`record_id`, `model_id`), FOREIGN KEY(`record_id`) REFERENCES `records`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "INSERT INTO `record_embedding_new` (`record_id`, `model_id`, `text_hash`, `dim`, `vector`, `updated_at`) " +
+                "SELECT `record_id`, `model_id`, `text_hash`, `dim`, `vector`, `updated_at` FROM `record_embedding`",
+        )
+        db.execSQL("DROP TABLE `record_embedding`")
+        db.execSQL("ALTER TABLE `record_embedding_new` RENAME TO `record_embedding`")
+    }
+}

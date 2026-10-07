@@ -81,10 +81,10 @@ class RelatedPersistenceTest {
         embed(t); embed(a); done(t); judge(t, a, .9f, 2); judge(t, b, .8f, 1)
 
         repo.delete(t)
-        assertNull(dao.embedding(t))
+        assertNull(dao.embedding(t, "e5-test"))
         assertNull(dao.analysis(t))
         assertEquals(0, count("related_judgment"))
-        assertNotNull(dao.embedding(a)) // candidates' own data untouched
+        assertNotNull(dao.embedding(a, "e5-test")) // candidates' own data untouched
         assertNotNull(repo.getRecord(a))
     }
 
@@ -167,7 +167,7 @@ class RelatedPersistenceTest {
         embed(t); done(t); judge(t, a, .9f, 2)
         repo.update(t, "지금", Emotion.CALM, null)      // emotion only
         repo.update(t, "  지금", Emotion.SAD, null)     // leading whitespace: same text version
-        assertNotNull(dao.embedding(t))
+        assertNotNull(dao.embedding(t, "e5-test"))
         assertEquals(AnalysisStatus.DONE, dao.analysis(t)!!.status)
         assertEquals(listOf(a), store.resultIds(t))
     }
@@ -179,9 +179,11 @@ class RelatedPersistenceTest {
         val t = repo.create("지금", null, null)
         embed(t); embed(a); done(t); judge(t, a, .9f, 2)
 
+        dao.upsertEmbedding(RecordEmbeddingEntity(t, "e5-test|explore", hash(t), 2, ByteArray(8), clock)) // 2nd space
         repo.update(t, "지금은 달라졌다", null, null)
-        assertNull(dao.embedding(t))
-        assertNotNull(dao.embedding(a))
+        assertNull(dao.embedding(t, "e5-test"))
+        assertNull(dao.embedding(t, "e5-test|explore")) // every space of the old text is dropped
+        assertNotNull(dao.embedding(a, "e5-test"))
         assertEquals(emptyList<Any>(), dao.judgmentsFor(t))
         val row = dao.analysis(t)!!
         assertEquals(AnalysisStatus.PENDING, row.status)

@@ -115,6 +115,12 @@ class ModelInstaller(
     }
 
     /**
+     * The installed file of [artifact], only while it is verified for the current manifest (size + marker); else null.
+     * For the runtime that loads the model after `SemanticGate` allowed it. Blocking (file checks only, no hashing).
+     */
+    fun verifiedFile(artifact: ModelArtifact): File? = finalFile(artifact).takeIf { artifact in manifest && isVerified(artifact) }
+
+    /**
      * Re-read the disk (app start / Settings open). Also the crash-recovery step: removes other versions and stray
      * files, drops `.part` files bigger than expected; a valid `.part` of the current version stays for resume.
      * Never touches a running download.

@@ -31,10 +31,11 @@ interface RelatedDao {
     @Upsert
     suspend fun upsertEmbedding(embedding: RecordEmbeddingEntity)
 
-    @Query("SELECT * FROM record_embedding WHERE record_id = :recordId")
-    suspend fun embedding(recordId: String): RecordEmbeddingEntity?
+    /** The record's embedding in the space [modelId] (model + purpose / prefix), or null. */
+    @Query("SELECT * FROM record_embedding WHERE record_id = :recordId AND model_id = :modelId")
+    suspend fun embedding(recordId: String, modelId: String): RecordEmbeddingEntity?
 
-    /** Drops the embedding unless it was made for [textHash]. */
+    /** Drops the record's embeddings (every space) unless made for [textHash]. */
     @Query("DELETE FROM record_embedding WHERE record_id = :recordId AND text_hash != :textHash")
     suspend fun deleteStaleEmbedding(recordId: String, textHash: String)
 
@@ -51,6 +52,10 @@ interface RelatedDao {
     /** The queue: PENDING, first queued first. */
     @Query("SELECT * FROM related_analysis WHERE status = 'PENDING' ORDER BY queued_at, record_id LIMIT 1")
     suspend fun nextPending(): RelatedAnalysisEntity?
+
+    /** The queue in order (PENDING, first queued first), without changing it — the e5 embedding step reads it. */
+    @Query("SELECT record_id FROM related_analysis WHERE status = 'PENDING' ORDER BY queued_at, record_id LIMIT :limit")
+    suspend fun pendingIds(limit: Int): List<String>
 
     @Query("SELECT COUNT(*) FROM related_analysis WHERE status = 'PENDING'")
     suspend fun pendingCount(): Int

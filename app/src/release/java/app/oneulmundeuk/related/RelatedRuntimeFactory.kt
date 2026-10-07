@@ -1,8 +1,10 @@
 package app.oneulmundeuk.related
 
 import android.app.Application
-import app.oneulmundeuk.data.db.AppDatabase
 
-/** Release (M6-4): no model yet — nothing is queued, nothing runs, nothing is shown. Never creates fake results. */
+/**
+ * Release: the real runtime ([productionRelatedRuntime]). It does nothing until `SemanticGate` opens (관련된 생각 ON +
+ * models Ready), shows no results yet (no judge), and never creates fake results.
+ */
 @Suppress("UNUSED_PARAMETER")
-fun createRelatedRuntime(app: Application, database: () -> AppDatabase): RelatedRuntime = NoRelatedRuntime
+fun createRelatedRuntime(app: Application, env: SemanticEnvironment): RelatedRuntime = productionRelatedRuntime(env)

@@ -47,7 +47,8 @@ class FakeJudge(
 class FakeAnalysisStorage : RelatedAnalysisStorage {
     val records = linkedMapOf<String, RecordTextRow>()
     val analyses = linkedMapOf<String, RelatedAnalysisEntity>()
-    val embeddings = linkedMapOf<String, RecordEmbeddingEntity>()
+    /** Keyed like the v4 table: (record_id, model_id). */
+    val embeddings = linkedMapOf<Pair<String, String>, RecordEmbeddingEntity>()
     val judgmentRows = linkedMapOf<Pair<String, String>, RelatedJudgmentEntity>()
     private var clock = 0L
 
@@ -65,7 +66,7 @@ class FakeAnalysisStorage : RelatedAnalysisStorage {
     fun edit(id: String, text: String) { records[id] = records.getValue(id).copy(text = text) }
 
     fun delete(id: String) {
-        records.remove(id); analyses.remove(id); embeddings.remove(id)
+        records.remove(id); analyses.remove(id); embeddings.keys.removeAll { it.first == id }
         judgmentRows.keys.removeAll { it.first == id || it.second == id }
     }
 
@@ -79,8 +80,8 @@ class FakeAnalysisStorage : RelatedAnalysisStorage {
     override suspend fun recordsBefore(target: RecordTextRow) =
         records.values.filter { it.createdAt < target.createdAt && it.id != target.id }.sortedWith(compareBy({ it.createdAt }, { it.id }))
 
-    override suspend fun embedding(recordId: String) = embeddings[recordId]
-    override suspend fun saveEmbedding(embedding: RecordEmbeddingEntity) { embeddings[embedding.recordId] = embedding }
+    override suspend fun embedding(recordId: String, modelId: String) = embeddings[recordId to modelId]
+    override suspend fun saveEmbedding(embedding: RecordEmbeddingEntity) { embeddings[embedding.recordId to embedding.modelId] = embedding }
     override suspend fun judgments(targetId: String) = judgmentRows.values.filter { it.targetId == targetId }
     override suspend fun saveJudgment(judgment: RelatedJudgmentEntity) {
         check(judgment.targetId in records && judgment.candidateId in records) { "FK" }

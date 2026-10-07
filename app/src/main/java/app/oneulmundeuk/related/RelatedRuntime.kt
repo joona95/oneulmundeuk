@@ -5,9 +5,12 @@ package app.oneulmundeuk.related
  * What this build can do for related records. Chosen per build type by `createRelatedRuntime` (src/debug, src/release),
  * so `main` never references a model or a fake.
  *
- * - release (M6-4): [NoRelatedRuntime] — no model yet: nothing is queued, nothing runs, nothing is shown.
- * - debug: `DebugRelatedRuntime` — deterministic fake models through the real analyzer / Room / store, behind a flag file.
- * - M6-5+: the real e5 / Qwen runtime replaces the release one (download, Settings ON/OFF, WorkManager).
+ * - release (M6-9): `productionRelatedRuntime` → [E5RecordEmbeddingRuntime] — behind `SemanticGate`, real e5 record
+ *   embeddings for queued records; no judge yet, so nothing is shown. Gate closed = nothing queued / loaded / run.
+ * - debug: the same, or with a flag file `DebugRelatedRuntime` — deterministic fake models through the real analyzer /
+ *   Room / store.
+ * - [NoRelatedRuntime]: does nothing at all (tests).
+ * - Next: Qwen judge + `RelatedAnalyzer` drain (M6-7 / M6-9 worker), Explore e5 (`E5Purpose.EXPLORE`).
  */
 interface RelatedRuntime {
     /** Version whose results are shown (`RelatedStore`). Null = show nothing. */
@@ -23,8 +26,8 @@ interface RelatedRuntime {
     fun onRecordsChanged()
 
     /**
-     * Explore search e5 (null = no local model in this build / runtime). The SAME embedder Related uses (shared
-     * `record_embedding` cache). Explore uses no LLM (experiments/search S1 · Thought Index PoC).
+     * Explore search e5 (null = no local model in this build / runtime). Its own embedding space (`TextEmbedder.modelId`):
+     * the `record_embedding` table is shared, rows are per space. Explore uses no LLM (experiments/search S1 · Thought Index PoC).
      */
     val textEmbedder: TextEmbedder?
 }

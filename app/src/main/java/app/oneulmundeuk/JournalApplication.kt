@@ -26,6 +26,7 @@ import app.oneulmundeuk.related.RelatedInvalidator
 import app.oneulmundeuk.related.RelatedRepository
 import app.oneulmundeuk.related.RelatedRuntime
 import app.oneulmundeuk.related.RelatedStore
+import app.oneulmundeuk.related.SemanticEnvironment
 import app.oneulmundeuk.related.createRelatedRuntime
 import app.oneulmundeuk.resurface.DateBasedResurfacedRecordSelector
 import app.oneulmundeuk.resurface.ResurfacedRecordSelector
@@ -37,10 +38,21 @@ import app.oneulmundeuk.search.SemanticSearch
 class AppContainer(app: Application) {
     val database: AppDatabase by lazy { AppDatabase.create(app) }
     /**
-     * Per build type (src/debug, src/release). Release: no model yet → nothing queued / run / shown.
-     * Debug: fake models behind a flag file (docs/m6-related-design.md "M6-4 debug fake").
+     * Per build type (src/debug, src/release). Release (and debug without the flag file): the real runtime — e5 record
+     * embeddings once [semanticInferenceAllowed]; no results shown yet. Debug flag file: fake models (M6-4 debug fake).
      */
-    val relatedRuntime: RelatedRuntime by lazy { createRelatedRuntime(app) { database } }
+    val relatedRuntime: RelatedRuntime by lazy {
+        createRelatedRuntime(
+            app,
+            SemanticEnvironment(
+                database = { database },
+                gate = semanticInferenceAllowed,
+                refreshModels = { modelInstaller.refresh() },
+                verifiedFile = modelInstaller::verifiedFile,
+                scope = appScope,
+            ),
+        )
+    }
     /** Keeps related-record caches consistent after each committed write (M6-2). */
     val recordChangeListener: RecordChangeListener by lazy {
         RelatedInvalidator(
@@ -78,8 +90,8 @@ class AppContainer(app: Application) {
         ModelInstaller(modelRoot(app), RelatedModels.BUNDLE, fetcher = null, AndroidNetworkCheck(app), { freeBytesAt(app.noBackupFilesDir) }, appScope)
     }
     /**
-     * [SemanticGate]: 관련된 생각 ON AND models Ready. The future production runtime / worker reads this before any
-     * inference. Not wired into the current runtimes (release NoRelatedRuntime, debug fake) on purpose.
+     * [SemanticGate]: 관련된 생각 ON AND models Ready. The production runtime reads it before queueing, loading or
+     * running a model (the debug fake ignores it).
      */
     val semanticInferenceAllowed: Flow<Boolean> by lazy {
         combine(settingsStore.settings, modelInstaller.state) { s, m -> SemanticGate.allows(s.relatedEnabled, m) }
